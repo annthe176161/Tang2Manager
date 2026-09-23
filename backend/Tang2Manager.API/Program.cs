@@ -47,6 +47,14 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseCors("AllowFrontend");
+
+// Serve React SPA static files from wwwroot
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
+
+// Fallback to index.html for SPA client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();
