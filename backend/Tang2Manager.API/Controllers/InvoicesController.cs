@@ -80,7 +80,8 @@ public class InvoicesController : ControllerBase
     [HttpPost("items")]
     public async Task<ActionResult<InvoiceItem>> CreateItem([FromBody] InvoiceItem item)
     {
-        // Auto-calculate amounts
+        // Force Id to 0 so SQL Server IDENTITY generates primary key
+        item.Id = 0;
         item.Amount = item.Quantity * item.UnitPrice;
         if (item.TaxRate > 0)
         {
@@ -92,10 +93,38 @@ public class InvoicesController : ControllerBase
             item.TaxAmount = 0;
             item.TotalPayment = item.Amount;
         }
+        item.CreatedAt = DateTime.UtcNow;
 
         _context.InvoiceItems.Add(item);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetItemsByCategory), new { categoryId = item.CategoryId }, item);
+    }
+
+    [HttpPost("items/batch")]
+    public async Task<ActionResult<IEnumerable<InvoiceItem>>> CreateBatchItems([FromBody] List<InvoiceItem> items)
+    {
+        if (items == null || !items.Any()) return BadRequest("No items provided");
+
+        foreach (var item in items)
+        {
+            item.Id = 0; // Force Id to 0 so SQL Server IDENTITY generates primary key
+            item.Amount = item.Quantity * item.UnitPrice;
+            if (item.TaxRate > 0)
+            {
+                item.TaxAmount = Math.Round(item.Amount * (item.TaxRate / 100m));
+                item.TotalPayment = item.Amount + item.TaxAmount;
+            }
+            else
+            {
+                item.TaxAmount = 0;
+                item.TotalPayment = item.Amount;
+            }
+            item.CreatedAt = DateTime.UtcNow;
+            _context.InvoiceItems.Add(item);
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(items);
     }
 
     [HttpPut("items/{id}")]

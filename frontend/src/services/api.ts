@@ -64,6 +64,11 @@ export const invoiceApi = {
     return res.data;
   },
 
+  createBatchItems: async (items: any[]) => {
+    const res = await api.post('/invoices/items/batch', items);
+    return res.data;
+  },
+
   updateItem: async (id: number, item: any) => {
     const res = await api.put(`/invoices/items/${id}`, item);
     return res.data;

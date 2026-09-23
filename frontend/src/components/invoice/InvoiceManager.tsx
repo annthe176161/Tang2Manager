@@ -209,7 +209,7 @@ export const InvoiceManager: React.FC = () => {
     const totalPayment = amount + taxAmount;
 
     const itemToSave: InvoiceItem = {
-      id: editingItem.id || Date.now(),
+      id: isNewItem ? 0 : (editingItem.id || 0),
       categoryId: activeCategoryId,
       dateStr: editingItem.dateStr || '1/9',
       itemName: editingItem.itemName,
@@ -225,29 +225,51 @@ export const InvoiceManager: React.FC = () => {
     };
 
     if (isNewItem) {
-      setCategoryItems((prev) => ({
-        ...prev,
-        [activeCategoryId]: [...(prev[activeCategoryId] || []), itemToSave],
-      }));
       try {
-        await invoiceApi.createItem(itemToSave);
+        const saved = await invoiceApi.createItem({ ...itemToSave, id: 0 });
+        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId);
+        setCategoryItems((prev) => ({
+          ...prev,
+          [activeCategoryId]: freshItems && freshItems.length > 0 ? freshItems : [...(prev[activeCategoryId] || []), saved || itemToSave],
+        }));
+
+        const updatedCats = await invoiceApi.getCategories();
+        if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
+
+        showToast(`💾 Đã lưu mặt hàng [${itemToSave.itemName}] vào Database SQL Server!`);
       } catch (e) {
-        console.log('Saved item locally');
+        console.error('Error saving item to DB:', e);
+        setCategoryItems((prev) => ({
+          ...prev,
+          [activeCategoryId]: [...(prev[activeCategoryId] || []), itemToSave],
+        }));
+        showToast(`Đã thêm mặt hàng [${itemToSave.itemName}]!`);
       }
-      showToast(`Đã thêm mặt hàng [${itemToSave.itemName}] thành công!`);
     } else {
-      setCategoryItems((prev) => ({
-        ...prev,
-        [activeCategoryId]: (prev[activeCategoryId] || []).map((i) =>
-          i.id === itemToSave.id ? itemToSave : i
-        ),
-      }));
       try {
         if (itemToSave.id) await invoiceApi.updateItem(itemToSave.id, itemToSave);
+        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId);
+        setCategoryItems((prev) => ({
+          ...prev,
+          [activeCategoryId]: freshItems && freshItems.length > 0
+            ? freshItems
+            : (prev[activeCategoryId] || []).map((i) => (i.id === itemToSave.id ? itemToSave : i)),
+        }));
+
+        const updatedCats = await invoiceApi.getCategories();
+        if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
+
+        showToast(`💾 Đã cập nhật [${itemToSave.itemName}] trong Database!`);
       } catch (e) {
-        console.log('Updated item locally');
+        console.error('Error updating item in DB:', e);
+        setCategoryItems((prev) => ({
+          ...prev,
+          [activeCategoryId]: (prev[activeCategoryId] || []).map((i) =>
+            i.id === itemToSave.id ? itemToSave : i
+          ),
+        }));
+        showToast(`Đã cập nhật [${itemToSave.itemName}]!`);
       }
-      showToast(`Đã cập nhật [${itemToSave.itemName}]!`);
     }
 
     setEditingItem(null);
@@ -257,17 +279,26 @@ export const InvoiceManager: React.FC = () => {
     if (!activeCategoryId) return;
     if (!window.confirm('Bạn có chắc chắn muốn xóa mặt hàng này khỏi hóa đơn?')) return;
 
-    setCategoryItems((prev) => ({
-      ...prev,
-      [activeCategoryId]: (prev[activeCategoryId] || []).filter((i) => i.id !== itemId),
-    }));
-
     try {
       await invoiceApi.deleteItem(itemId);
+      const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId);
+      setCategoryItems((prev) => ({
+        ...prev,
+        [activeCategoryId]: freshItems || (prev[activeCategoryId] || []).filter((i) => i.id !== itemId),
+      }));
+
+      const updatedCats = await invoiceApi.getCategories();
+      if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
+
+      showToast('🗑️ Đã xóa mặt hàng khỏi Database!');
     } catch (e) {
-      console.log('Deleted item locally');
+      console.error('Error deleting item from DB:', e);
+      setCategoryItems((prev) => ({
+        ...prev,
+        [activeCategoryId]: (prev[activeCategoryId] || []).filter((i) => i.id !== itemId),
+      }));
+      showToast('Đã xóa mặt hàng!');
     }
-    showToast('Đã xóa mặt hàng thành công!');
   };
 
   // Modal edit category fixed amount
@@ -286,51 +317,73 @@ export const InvoiceManager: React.FC = () => {
         ...editingCategoryAmount,
         fixedAmount: fixedAmountInput,
       });
+      const updatedCats = await invoiceApi.getCategories();
+      if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
+      showToast(`💾 Đã cập nhật số tiền [${editingCategoryAmount.name}] vào Database!`);
     } catch (e) {
-      console.log('Saved fixed amount locally');
+      console.error('Error updating category fixed amount:', e);
+      showToast(`Đã cập nhật số tiền cho [${editingCategoryAmount.name}]!`);
     }
     setEditingCategoryAmount(null);
-    showToast(`Đã cập nhật số tiền cho [${editingCategoryAmount.name}]!`);
   };
 
-  // Handler for saving items scanned by AI
+  // Handler for saving items scanned by AI directly into SQL Server DB
   const handleSaveScannedItems = async (categoryId: number, items: Partial<InvoiceItem>[]) => {
     const existingCount = categoryItems[categoryId]?.length || 0;
-    const newItems: InvoiceItem[] = items.map((it, idx) => ({
-      id: it.id || Date.now() + idx,
+    
+    // Prepare items with id = 0 so SQL Server auto-generates primary key
+    const itemsPayload = items.map((it, idx) => ({
+      id: 0,
       categoryId,
-      dateStr: it.dateStr || '23/9',
+      dateStr: it.dateStr || '20/9',
       itemName: it.itemName || '',
       unit: it.unit || 'kg',
-      quantity: it.quantity || 1,
-      unitPrice: it.unitPrice || 0,
-      taxRate: it.taxRate || 0,
-      taxAmount: it.taxAmount || 0,
-      amount: it.amount || 0,
-      totalPayment: it.totalPayment || it.amount || 0,
+      quantity: Number(it.quantity) || 1,
+      unitPrice: Number(it.unitPrice) || 0,
+      taxRate: Number(it.taxRate) || 0,
+      taxAmount: Number(it.taxAmount) || 0,
+      amount: Number(it.amount) || Math.round((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0)),
+      totalPayment: Number(it.totalPayment) || Number(it.amount) || 0,
       displayOrder: existingCount + idx + 1,
       note: it.note || '',
     }));
 
-    // Update local state
-    setCategoryItems((prev) => ({
-      ...prev,
-      [categoryId]: [...(prev[categoryId] || []), ...newItems],
-    }));
+    try {
+      // 1. Save directly to SQL Server database via batch API
+      const savedItems = await invoiceApi.createBatchItems(itemsPayload);
 
-    // Switch view to this category so user sees their new items immediately
-    setActiveCategoryId(categoryId);
+      // 2. Fetch fresh items from database for this category
+      const freshItems = await invoiceApi.getItemsByCategory(categoryId);
+      setCategoryItems((prev) => ({
+        ...prev,
+        [categoryId]: freshItems && freshItems.length > 0 
+          ? freshItems 
+          : (savedItems?.length ? [...(prev[categoryId] || []), ...savedItems] : itemsPayload),
+      }));
 
-    // Save each to backend API
-    for (const item of newItems) {
-      try {
-        await invoiceApi.createItem(item);
-      } catch (e) {
-        console.log('Saved item locally');
+      // 3. Switch view to this category
+      setActiveCategoryId(categoryId);
+
+      // 4. Update categories summary so total reflects database immediately
+      const updatedCats = await invoiceApi.getCategories();
+      if (updatedCats && updatedCats.length > 0) {
+        setCategories(updatedCats);
       }
-    }
 
-    showToast(`🎉 Đã quét và nhập thành công ${newItems.length} mặt hàng vào hóa đơn!`);
+      showToast(`💾 Đã lưu thành công ${itemsPayload.length} mặt hàng vào Database SQL Server!`);
+    } catch (err) {
+      console.error('Lỗi khi lưu vào database SQL Server:', err);
+      // Fallback local update
+      setCategoryItems((prev) => ({
+        ...prev,
+        [categoryId]: [
+          ...(prev[categoryId] || []),
+          ...itemsPayload.map((it, idx) => ({ ...it, id: Date.now() + idx })),
+        ],
+      }));
+      setActiveCategoryId(categoryId);
+      showToast('⚠️ Không kết nối được Database, đã lưu tạm vào bộ nhớ.');
+    }
   };
 
   // Screenshot & Copy handlers
