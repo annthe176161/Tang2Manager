@@ -10,8 +10,10 @@ import {
   Check,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Sparkles
 } from 'lucide-react';
+import { InvoiceScannerModal } from './InvoiceScannerModal';
 
 // Initial fallback categories matching Image 1
 const INITIAL_CATEGORIES: InvoiceCategory[] = [
@@ -69,6 +71,7 @@ export const InvoiceManager: React.FC = () => {
   const [selectedYear] = useState<number>(2026);
   const [categories, setCategories] = useState<InvoiceCategory[]>(INITIAL_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
 
   // Items per category
   const [categoryItems, setCategoryItems] = useState<Record<number, InvoiceItem[]>>({
@@ -290,6 +293,46 @@ export const InvoiceManager: React.FC = () => {
     showToast(`Đã cập nhật số tiền cho [${editingCategoryAmount.name}]!`);
   };
 
+  // Handler for saving items scanned by AI
+  const handleSaveScannedItems = async (categoryId: number, items: Partial<InvoiceItem>[]) => {
+    const existingCount = categoryItems[categoryId]?.length || 0;
+    const newItems: InvoiceItem[] = items.map((it, idx) => ({
+      id: it.id || Date.now() + idx,
+      categoryId,
+      dateStr: it.dateStr || '23/9',
+      itemName: it.itemName || '',
+      unit: it.unit || 'kg',
+      quantity: it.quantity || 1,
+      unitPrice: it.unitPrice || 0,
+      taxRate: it.taxRate || 0,
+      taxAmount: it.taxAmount || 0,
+      amount: it.amount || 0,
+      totalPayment: it.totalPayment || it.amount || 0,
+      displayOrder: existingCount + idx + 1,
+      note: it.note || '',
+    }));
+
+    // Update local state
+    setCategoryItems((prev) => ({
+      ...prev,
+      [categoryId]: [...(prev[categoryId] || []), ...newItems],
+    }));
+
+    // Switch view to this category so user sees their new items immediately
+    setActiveCategoryId(categoryId);
+
+    // Save each to backend API
+    for (const item of newItems) {
+      try {
+        await invoiceApi.createItem(item);
+      } catch (e) {
+        console.log('Saved item locally');
+      }
+    }
+
+    showToast(`🎉 Đã quét và nhập thành công ${newItems.length} mặt hàng vào hóa đơn!`);
+  };
+
   // Screenshot & Copy handlers
   const handleDownload = async (ref: React.RefObject<HTMLDivElement | null>, name: string) => {
     if (!ref.current) return;
@@ -363,6 +406,15 @@ export const InvoiceManager: React.FC = () => {
               </button>
             </>
           ) : null}
+
+          {/* Nút Quét Hóa Đơn AI */}
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black rounded-xl text-xs shadow-md hover:shadow-lg transition cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-white" />
+            <span>📸 Quét Hóa Đơn (AI)</span>
+          </button>
 
           <button
             onClick={() =>
@@ -983,6 +1035,15 @@ export const InvoiceManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: QUÉT HÓA ĐƠN AI THÔNG MINH */}
+      <InvoiceScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        categories={categories}
+        currentCategoryId={activeCategoryId}
+        onSaveItems={handleSaveScannedItems}
+      />
     </div>
   );
 };
