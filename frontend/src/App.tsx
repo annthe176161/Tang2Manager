@@ -17,11 +17,11 @@ import {
 } from 'lucide-react';
 
 const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 1, fullName: 'Quang', role: '', isActive: true, displayOrder: 1 },
-  { id: 2, fullName: 'Hiền', role: '', isActive: true, displayOrder: 2 },
-  { id: 3, fullName: 'Ngọc Anh', role: '', isActive: true, displayOrder: 3 },
-  { id: 4, fullName: 'Minh Ánh', role: '', isActive: true, displayOrder: 4 },
-  { id: 5, fullName: 'Hà', role: '', isActive: true, displayOrder: 5 },
+  { id: 1, fullName: 'Quang', role: 'Nhân viên', isActive: true, displayOrder: 1 },
+  { id: 2, fullName: 'Hiền', role: 'Nhân viên', isActive: true, displayOrder: 2 },
+  { id: 3, fullName: 'Ngọc Anh', role: 'Nhân viên', isActive: true, displayOrder: 3 },
+  { id: 4, fullName: 'Minh Ánh', role: 'Nhân viên', isActive: true, displayOrder: 4 },
+  { id: 5, fullName: 'Hà', role: 'Bếp', isActive: true, displayOrder: 5 },
 ];
 
 const INITIAL_SHIFTS: ShiftTemplate[] = [
@@ -187,6 +187,20 @@ export function App() {
     showToast('Đã xóa nhân viên khỏi bảng lịch.');
   };
 
+  // Toggle role between Nhân viên and Bếp
+  const handleToggleEmployeeRole = (id: number) => {
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === id) {
+          const nextRole = (emp.role || '').toLowerCase().includes('bếp') ? 'Nhân viên' : 'Bếp';
+          showToast(`${emp.fullName}: Đã đổi sang bộ phận ${nextRole}`);
+          return { ...emp, role: nextRole };
+        }
+        return emp;
+      })
+    );
+  };
+
   const handlePrevWeek = () => {
     const prev = new Date(currentMonday);
     prev.setDate(prev.getDate() - 7);
@@ -346,6 +360,7 @@ export function App() {
           onBatchAssignmentChange={handleBatchAssignmentChange}
           onAddEmployee={handleAddEmployee}
           onDeleteEmployee={handleDeleteEmployee}
+          onToggleEmployeeRole={handleToggleEmployeeRole}
           weekStartDate={currentMonday}
         />
 

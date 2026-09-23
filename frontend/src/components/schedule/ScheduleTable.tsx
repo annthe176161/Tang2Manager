@@ -30,6 +30,7 @@ interface ScheduleTableProps {
   ) => void;
   onAddEmployee?: (name: string, role: string) => void;
   onDeleteEmployee?: (id: number) => void;
+  onToggleEmployeeRole?: (id: number) => void;
   weekStartDate: Date;
 }
 
@@ -61,6 +62,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onBatchAssignmentChange,
   onAddEmployee,
   onDeleteEmployee,
+  onToggleEmployeeRole,
   weekStartDate,
 }) => {
   const [selectedCell, setSelectedCell] = useState<{
@@ -83,6 +85,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   // Add employee modal
   const [showAddEmpModal, setShowAddEmpModal] = useState(false);
   const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpRole, setNewEmpRole] = useState<'Nhân viên' | 'Bếp'>('Nhân viên');
 
   const getDayDate = (dayOffset: number) => {
     const d = new Date(weekStartDate);
@@ -184,30 +187,97 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     return 'bg-white text-gray-900 font-medium hover:bg-gray-50';
   };
 
-  // Daily statistics
+  // Helper to determine if a shift includes morning hours
+  const isMorningShift = (shiftText: string): boolean => {
+    const text = shiftText.toLowerCase();
+    if (text.includes('nghỉ') || text.includes('off')) return false;
+    // Shifts like "10h - 15h", "10h - 21h", "10h - 22h", "10h - kết ca", "8h", "9h", "11h", "sáng", "trưa", "gãy"
+    if (
+      text.includes('10h') || 
+      text.includes('8h') || 
+      text.includes('9h') || 
+      text.includes('11h') || 
+      text.includes('12h') || 
+      text.includes('sáng') || 
+      text.includes('trưa') || 
+      text.includes('gãy')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Helper to determine if a shift includes afternoon/evening hours
+  const isEveningShift = (shiftText: string): boolean => {
+    const text = shiftText.toLowerCase();
+    if (text.includes('nghỉ') || text.includes('off')) return false;
+    // Shifts starting around afternoon/evening: 17h, 18h, 19h, 20h, chiều, tối
+    if (
+      text.includes('17h') || 
+      text.includes('17 -') || 
+      text.includes('18h') || 
+      text.includes('19h') || 
+      text.includes('20h') || 
+      text.includes('chiều') || 
+      text.includes('tối')
+    ) {
+      return true;
+    }
+    // Shifts extending to closing: kết ca, hết ca, 21h, 22h, gãy
+    if (
+      text.includes('kết ca') || 
+      text.includes('hết ca') || 
+      text.includes('21h') || 
+      text.includes('22h') || 
+      text.includes('gãy')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Daily statistics broken down into Morning (NV + Bếp) and Evening (NV + Bếp)
   const getDayStats = (dayOfWeek: number) => {
-    let working = 0;
-    let off = 0;
+    let morningNV = 0;
+    let morningBep = 0;
+    let eveningNV = 0;
+    let eveningBep = 0;
+    let offCount = 0;
+
     employees.forEach((emp) => {
       const a = getAssignment(emp.id, dayOfWeek);
-      if (a && a.shiftText && a.shiftText.trim() !== '') {
-        if (a.isOff || a.shiftText.toLowerCase().includes('nghỉ') || a.shiftText.toLowerCase().includes('off')) {
-          off++;
-        } else {
-          working++;
-        }
+      if (!a || !a.shiftText || a.shiftText.trim() === '') return;
+
+      const isOff = a.isOff || a.shiftText.toLowerCase().includes('nghỉ') || a.shiftText.toLowerCase().includes('off');
+      if (isOff) {
+        offCount++;
+        return;
+      }
+
+      const isBep = (emp.role || '').toLowerCase().includes('bếp');
+
+      if (isMorningShift(a.shiftText)) {
+        if (isBep) morningBep++;
+        else morningNV++;
+      }
+
+      if (isEveningShift(a.shiftText)) {
+        if (isBep) eveningBep++;
+        else eveningNV++;
       }
     });
-    return { working, off };
+
+    return { morningNV, morningBep, eveningNV, eveningBep, offCount };
   };
 
   const handleCreateEmployeeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmpName.trim()) return;
     if (onAddEmployee) {
-      onAddEmployee(newEmpName.trim(), '');
+      onAddEmployee(newEmpName.trim(), newEmpRole);
     }
     setNewEmpName('');
+    setNewEmpRole('Nhân viên');
     setShowAddEmpModal(false);
   };
 
@@ -258,10 +328,26 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 key={emp.id} 
                 className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-emerald-50/30 transition-colors group`}
               >
-                {/* Employee Name (clean, without roles) */}
+                {/* Employee Name + Role Toggle Badge */}
                 <td className="border border-gray-400 py-3 px-3 text-center bg-white font-medium text-gray-800">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>{emp.fullName}</span>
+                    {onToggleEmployeeRole && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleEmployeeRole(emp.id);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer select-none ${
+                          (emp.role || '').toLowerCase().includes('bếp')
+                            ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                        }`}
+                        title="Bấm để đổi vai trò (Nhân viên / Bếp)"
+                      >
+                        {(emp.role || '').toLowerCase().includes('bếp') ? 'Bếp' : 'NV'}
+                      </button>
+                    )}
                     {onDeleteEmployee && employees.length > 1 && (
                       <button
                         onClick={(e) => {
@@ -307,18 +393,58 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               </tr>
             ))}
 
-            {/* Daily Stats Summary Row at Table Bottom */}
-            <tr className="bg-slate-100 border-t border-gray-400 text-xs font-bold text-slate-700">
-              <td className="border border-gray-400 py-2 px-3 text-center bg-slate-200">
-                <span>📊 Tổng trực</span>
+            {/* Daily Stats Summary: Sáng (NV, Bếp) & Chiều (NV, Bếp) */}
+            {/* 1. Ca Sáng */}
+            <tr className="bg-amber-50/70 border-t border-gray-400 text-xs text-slate-800">
+              <td className="border border-gray-400 py-2 px-2 text-center font-bold bg-amber-100/70 text-amber-950 whitespace-nowrap">
+                ☀️ Ca Sáng
               </td>
               {DAYS.map((day) => {
                 const stats = getDayStats(day.dayOfWeek);
                 return (
-                  <td key={day.dayOfWeek} className="border border-gray-400 py-2 px-1 text-center">
-                    <div className="text-emerald-800 font-extrabold">{stats.working} đi làm</div>
-                    {stats.off > 0 && (
-                      <div className="text-red-600 font-semibold text-[10px]">{stats.off} nghỉ</div>
+                  <td key={day.dayOfWeek} className="border border-gray-400 py-1.5 px-1 text-center font-medium">
+                    <div className="flex items-center justify-center gap-1.5 text-xs">
+                      <span className="font-bold text-slate-800">{stats.morningNV} NV</span>
+                      <span className="text-gray-300">•</span>
+                      <span className="font-bold text-amber-700">{stats.morningBep} Bếp</span>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+
+            {/* 2. Ca Chiều */}
+            <tr className="bg-sky-50/70 border-t border-gray-300 text-xs text-slate-800">
+              <td className="border border-gray-400 py-2 px-2 text-center font-bold bg-sky-100/70 text-sky-950 whitespace-nowrap">
+                🌙 Ca Chiều
+              </td>
+              {DAYS.map((day) => {
+                const stats = getDayStats(day.dayOfWeek);
+                return (
+                  <td key={day.dayOfWeek} className="border border-gray-400 py-1.5 px-1 text-center font-medium">
+                    <div className="flex items-center justify-center gap-1.5 text-xs">
+                      <span className="font-bold text-slate-800">{stats.eveningNV} NV</span>
+                      <span className="text-gray-300">•</span>
+                      <span className="font-bold text-amber-700">{stats.eveningBep} Bếp</span>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+
+            {/* 3. Nghỉ (OFF) */}
+            <tr className="bg-slate-50 border-t border-gray-300 text-[11px] text-slate-600">
+              <td className="border border-gray-400 py-1.5 px-2 text-center font-semibold bg-slate-200/80 text-slate-700 whitespace-nowrap">
+                Nghỉ (OFF)
+              </td>
+              {DAYS.map((day) => {
+                const stats = getDayStats(day.dayOfWeek);
+                return (
+                  <td key={day.dayOfWeek} className="border border-gray-400 py-1 px-1 text-center">
+                    {stats.offCount > 0 ? (
+                      <span className="font-bold text-red-600">{stats.offCount} nghỉ</span>
+                    ) : (
+                      <span className="text-slate-300 font-normal">0</span>
                     )}
                   </td>
                 );
@@ -620,6 +746,36 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   placeholder="Nhập tên nhân viên"
                   className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-600 focus:outline-hidden font-semibold"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Bộ phận làm việc:
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewEmpRole('Nhân viên')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      newEmpRole === 'Nhân viên'
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                        : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Phục vụ / NV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewEmpRole('Bếp')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      newEmpRole === 'Bếp'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Bếp
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
