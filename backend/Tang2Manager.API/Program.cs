@@ -1,0 +1,52 @@
+using Microsoft.EntityFrameworkCore;
+using Tang2Manager.API.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Add DbContext with SQL Server
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 2. Add Controllers & built-in .NET 9 OpenAPI
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
+
+// 3. Configure CORS for React frontend (Vite default: http://localhost:5173)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+var app = builder.Build();
+
+// Auto-create database & apply seed data on start
+try
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.EnsureCreated();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[Database Warning] {ex.Message}");
+}
+
+// 4. Map .NET 9 OpenAPI document
+app.MapOpenApi();
+
+// 5. Enable Swagger UI at /swagger
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/openapi/v1.json", "Tang2Manager API v1");
+    options.RoutePrefix = "swagger"; // Available at http://localhost:5000/swagger
+});
+
+app.UseCors("AllowFrontend");
+app.MapControllers();
+
+app.Run();
