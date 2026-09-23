@@ -97,8 +97,24 @@ export const InvoiceScannerModal: React.FC<InvoiceScannerModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Clear old image and content
+  const handleClearImageAndContent = () => {
+    setImagePreview(null);
+    setScannedItems([]);
+    setStatusMessage(null);
+    setSupplierName('');
+    setReceiptDate('');
+    setIsProcessing(false);
+  };
+
   // Handle image upload / paste
   const handleImageFile = (file: File) => {
+    // Clear old items and old data immediately so new image gets clean slate
+    setScannedItems([]);
+    setSupplierName('');
+    setStatusMessage('Đang tải và quét hóa đơn mới...');
+    setIsProcessing(true);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
@@ -584,16 +600,27 @@ Lưu ý về số tiền: Nếu đơn giá viết tắt dạng nghìn (ví dụ 
                 <span>Ảnh Hóa Đơn Gốc Đối Chiếu:</span>
               </span>
               {imagePreview && (
-                <label className="text-emerald-700 hover:text-emerald-800 cursor-pointer underline flex items-center gap-1 font-semibold">
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Đổi ảnh khác</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])}
-                  />
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg cursor-pointer flex items-center gap-1 font-bold text-xs transition">
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Đổi ảnh</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleClearImageAndContent}
+                    className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded-lg flex items-center gap-1 font-bold text-xs transition cursor-pointer"
+                    title="Xóa ảnh cũ và xóa sạch nội dung để tải ảnh mới"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    <span>Xóa ảnh & nội dung cũ</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -626,6 +653,18 @@ Lưu ý về số tiền: Nếu đơn giá viết tắt dạng nghìn (ví dụ 
               </label>
             ) : (
               <div className="flex-1 min-h-[350px] bg-slate-100 rounded-2xl border border-slate-300 overflow-hidden flex flex-col relative group">
+                {/* Floating button to clear image */}
+                <div className="absolute top-2.5 right-2.5 z-10">
+                  <button
+                    type="button"
+                    onClick={handleClearImageAndContent}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition cursor-pointer backdrop-blur-xs"
+                    title="Bấm để xóa ảnh này và làm trống bảng"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa ảnh & nội dung</span>
+                  </button>
+                </div>
                 <div className="flex-1 overflow-auto p-2 flex items-center justify-center bg-slate-900/5">
                   <img
                     src={imagePreview}
@@ -786,14 +825,27 @@ Lưu ý về số tiền: Nếu đơn giá viết tắt dạng nghìn (ví dụ 
 
             {/* Bottom Controls */}
             <div className="flex items-center justify-between gap-3 pt-1">
-              <button
-                type="button"
-                onClick={handleAddNewItem}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Thêm dòng</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddNewItem}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm dòng</span>
+                </button>
+                {scannedItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setScannedItems([])}
+                    className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
+                    title="Xóa toàn bộ các dòng hiện tại trên bảng"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    <span>Làm trống bảng</span>
+                  </button>
+                )}
+              </div>
 
               <div className="flex items-center gap-3">
                 <div className="text-right">
