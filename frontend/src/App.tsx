@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ScheduleTable } from './components/schedule/ScheduleTable';
 import { SalaryManager } from './components/salary/SalaryManager';
+import { InvoiceManager } from './components/invoice/InvoiceManager';
 import type { Employee, ShiftTemplate, Assignment } from './types';
 import { scheduleApi } from './services/api';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from './utils/screenshot';
@@ -15,7 +16,8 @@ import {
   AlertCircle, 
   Sparkles,
   Store,
-  DollarSign
+  DollarSign,
+  Receipt
 } from 'lucide-react';
 
 const INITIAL_EMPLOYEES: Employee[] = [
@@ -53,7 +55,7 @@ export function App() {
   };
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
-  const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'salary'>('salary');
+  const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'salary' | 'invoice'>('invoice');
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [shifts, setShifts] = useState<ShiftTemplate[]>(INITIAL_SHIFTS);
   const [assignments, setAssignments] = useState<Assignment[]>([
@@ -285,7 +287,7 @@ export function App() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveMainTab('schedule')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
                 activeMainTab === 'schedule'
                   ? 'bg-emerald-800 text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100'
@@ -296,14 +298,25 @@ export function App() {
             </button>
             <button
               onClick={() => setActiveMainTab('salary')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
                 activeMainTab === 'salary'
                   ? 'bg-emerald-800 text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>💰 Tính Tiền Lương (Hằng Ngày & Tháng)</span>
+              <span>💰 Tính Tiền Lương</span>
+            </button>
+            <button
+              onClick={() => setActiveMainTab('invoice')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                activeMainTab === 'invoice'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>🧾 Tổng Hợp Hóa Đơn & Nhập Hàng</span>
               <span className="text-[10px] bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full font-black">
                 MỚI
               </span>
@@ -317,6 +330,8 @@ export function App() {
 
         {activeMainTab === 'salary' ? (
           <SalaryManager employees={employees} />
+        ) : activeMainTab === 'invoice' ? (
+          <InvoiceManager />
         ) : (
           <>
             {/* Top Header & Action Bar */}

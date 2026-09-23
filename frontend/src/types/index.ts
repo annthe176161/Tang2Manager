@@ -64,3 +64,31 @@ export interface WeeklySchedule {
   employees: Employee[];
   assignments: Assignment[];
 }
+
+export interface InvoiceCategory {
+  id: number;
+  name: string;
+  categoryType: 'Daily' | 'Supplier';
+  isPaid: boolean;
+  displayOrder: number;
+  fixedAmount: number;
+  totalAmount?: number;
+  itemCount?: number;
+}
+
+export interface InvoiceItem {
+  id: number;
+  categoryId: number;
+  dateStr: string;
+  itemName: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  taxAmount: number;
+  amount: number;
+  totalPayment: number;
+  displayOrder: number;
+  note?: string;
+}
+

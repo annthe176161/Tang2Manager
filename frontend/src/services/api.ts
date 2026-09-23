@@ -37,3 +37,40 @@ export const scheduleApi = {
     return res.data;
   },
 };
+
+export const invoiceApi = {
+  getCategories: async () => {
+    const res = await api.get('/invoices/categories');
+    return res.data;
+  },
+
+  togglePayment: async (id: number) => {
+    const res = await api.put(`/invoices/categories/${id}/toggle-payment`);
+    return res.data;
+  },
+
+  updateCategory: async (id: number, data: any) => {
+    const res = await api.put(`/invoices/categories/${id}`, data);
+    return res.data;
+  },
+
+  getItemsByCategory: async (categoryId: number) => {
+    const res = await api.get(`/invoices/items/${categoryId}`);
+    return res.data;
+  },
+
+  createItem: async (item: any) => {
+    const res = await api.post('/invoices/items', item);
+    return res.data;
+  },
+
+  updateItem: async (id: number, item: any) => {
+    const res = await api.put(`/invoices/items/${id}`, item);
+    return res.data;
+  },
+
+  deleteItem: async (id: number) => {
+    const res = await api.delete(`/invoices/items/${id}`);
+    return res.data;
+  },
+};
