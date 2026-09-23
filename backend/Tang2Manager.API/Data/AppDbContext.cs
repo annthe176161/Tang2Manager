@@ -31,11 +31,12 @@ public class AppDbContext : DbContext
 
         // Seed sample employees matching user image
         modelBuilder.Entity<Employee>().HasData(
-            new Employee { Id = 1, FullName = "Quang", Role = "Phục vụ", DisplayOrder = 1 },
-            new Employee { Id = 2, FullName = "Hiền", Role = "Thu ngân", DisplayOrder = 2 },
-            new Employee { Id = 3, FullName = "Ngọc Anh", Role = "Phục vụ", DisplayOrder = 3 },
-            new Employee { Id = 4, FullName = "Minh Ánh", Role = "Phục vụ", DisplayOrder = 4 },
-            new Employee { Id = 5, FullName = "Hà", Role = "Phục vụ", DisplayOrder = 5 }
+            new Employee { Id = 1, FullName = "Quang", Role = "Nhân viên", HourlyRate = 35000m, BaseSalary = 0m, DisplayOrder = 1 },
+            new Employee { Id = 2, FullName = "Hiền", Role = "Nhân viên", HourlyRate = 30000m, BaseSalary = 0m, DisplayOrder = 2 },
+            new Employee { Id = 3, FullName = "Ngọc Anh", Role = "Nhân viên", HourlyRate = 35000m, BaseSalary = 0m, DisplayOrder = 3 },
+            new Employee { Id = 4, FullName = "Minh Ánh", Role = "Nhân viên", HourlyRate = 35000m, BaseSalary = 0m, DisplayOrder = 4 },
+            new Employee { Id = 5, FullName = "Hà", Role = "Bếp", HourlyRate = 35000m, BaseSalary = 0m, DisplayOrder = 5 },
+            new Employee { Id = 6, FullName = "An", Role = "Nhân viên", HourlyRate = 40000m, BaseSalary = 0m, DisplayOrder = 6 }
         );
     }
 }

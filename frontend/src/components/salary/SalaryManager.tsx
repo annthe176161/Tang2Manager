@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import type { Employee, DailyTimesheet } from '../../types';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from '../../utils/screenshot';
 import { 
@@ -87,16 +87,16 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
   const summaryTableRef = useRef<HTMLDivElement>(null);
   const detailTableRef = useRef<HTMLDivElement>(null);
 
-  // Employee rates & base salaries state
-  const [employeeRates, setEmployeeRates] = useState<Record<number, { hourly: number; base: number }>>({
-    // Initial from Image 1: An: 40000, Quang: 35000, Hà: 35000, Linh: 30000, Hiền: 30000, Hòa: 30000, Đức: 40000 (base: 3000000)
-    1: { hourly: 35000, base: 0 },       // Quang
-    2: { hourly: 30000, base: 0 },       // Hiền
-    3: { hourly: 40000, base: 0 },       // An (hoặc Ngọc Anh)
-    4: { hourly: 30000, base: 0 },       // Linh (hoặc Minh Ánh)
-    5: { hourly: 35000, base: 0 },       // Hà
-    6: { hourly: 30000, base: 0 },       // Hòa
-    7: { hourly: 40000, base: 3000000 }, // Đức
+  // Employee rates & base salaries state initialized from employees
+  const [employeeRates, setEmployeeRates] = useState<Record<number, { hourly: number; base: number }>>(() => {
+    const rates: Record<number, { hourly: number; base: number }> = {};
+    employees.forEach((emp) => {
+      rates[emp.id] = {
+        hourly: emp.hourlyRate || 35000,
+        base: emp.baseSalary || 0,
+      };
+    });
+    return rates;
   });
 
   // Modal for editing employee rate & base salary
@@ -106,11 +106,37 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
   const [timesheets, setTimesheets] = useState<Record<number, DailyTimesheet[]>>(() => {
     const init: Record<number, DailyTimesheet[]> = {};
     employees.forEach((emp) => {
-      const rate = employeeRates[emp.id]?.hourly || 40000;
+      const rate = emp.hourlyRate || 35000;
       init[emp.id] = generateInitialTimesheet(emp.id, rate);
     });
     return init;
   });
+
+  useEffect(() => {
+    setEmployeeRates((prev) => {
+      const updated = { ...prev };
+      employees.forEach((emp) => {
+        if (!updated[emp.id]) {
+          updated[emp.id] = {
+            hourly: emp.hourlyRate || 35000,
+            base: emp.baseSalary || 0,
+          };
+        }
+      });
+      return updated;
+    });
+
+    setTimesheets((prev) => {
+      const updated = { ...prev };
+      employees.forEach((emp) => {
+        if (!updated[emp.id]) {
+          const rate = emp.hourlyRate || 35000;
+          updated[emp.id] = generateInitialTimesheet(emp.id, rate);
+        }
+      });
+      return updated;
+    });
+  }, [employees]);
 
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => {
