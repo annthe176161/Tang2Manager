@@ -3,8 +3,32 @@ export interface Employee {
   fullName: string;
   phoneNumber?: string;
   role: string;
+  hourlyRate?: number; // Lương theo giờ (VD: 40000, 35000, 30000)
+  baseSalary?: number; // Lương cứng (VD: 3000000)
   isActive: boolean;
   displayOrder: number;
+}
+
+export interface DailyTimesheet {
+  id?: number;
+  employeeId: number;
+  day: number; // 1 to 31
+  dateStr: string; // "1/9", "2/9", ...
+  startTime: string; // "17h", "10h", ""
+  endTime: string; // "23h", "22h30", "00h", ""
+  totalHours: number; // 6, 7, 4.5, 11.5
+  hourlyRate: number; // 40000
+  dailyPay: number; // totalHours * hourlyRate
+  isOff: boolean; // true -> tô đỏ như ảnh
+}
+
+export interface EmployeeMonthlySalary {
+  employeeId: number;
+  employeeName: string;
+  hourlyRate: number;
+  baseSalary: number;
+  totalHours: number;
+  totalSalary: number;
 }
 
 export interface ShiftTemplate {

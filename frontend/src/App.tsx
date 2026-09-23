@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ScheduleTable } from './components/schedule/ScheduleTable';
+import { SalaryManager } from './components/salary/SalaryManager';
 import type { Employee, ShiftTemplate, Assignment } from './types';
 import { scheduleApi } from './services/api';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from './utils/screenshot';
@@ -13,15 +14,20 @@ import {
   Check, 
   AlertCircle, 
   Sparkles,
-  Store
+  Store,
+  DollarSign
 } from 'lucide-react';
 
 const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 1, fullName: 'Quang', role: 'Nhân viên', isActive: true, displayOrder: 1 },
-  { id: 2, fullName: 'Hiền', role: 'Nhân viên', isActive: true, displayOrder: 2 },
-  { id: 3, fullName: 'Ngọc Anh', role: 'Nhân viên', isActive: true, displayOrder: 3 },
-  { id: 4, fullName: 'Minh Ánh', role: 'Nhân viên', isActive: true, displayOrder: 4 },
-  { id: 5, fullName: 'Hà', role: 'Bếp', isActive: true, displayOrder: 5 },
+  { id: 1, fullName: 'An', role: 'Nhân viên', hourlyRate: 40000, baseSalary: 0, isActive: true, displayOrder: 1 },
+  { id: 2, fullName: 'Quang', role: 'Nhân viên', hourlyRate: 35000, baseSalary: 0, isActive: true, displayOrder: 2 },
+  { id: 3, fullName: 'Hà', role: 'Bếp', hourlyRate: 35000, baseSalary: 0, isActive: true, displayOrder: 3 },
+  { id: 4, fullName: 'Linh', role: 'Nhân viên', hourlyRate: 30000, baseSalary: 0, isActive: true, displayOrder: 4 },
+  { id: 5, fullName: 'Hiền', role: 'Nhân viên', hourlyRate: 30000, baseSalary: 0, isActive: true, displayOrder: 5 },
+  { id: 6, fullName: 'Hòa', role: 'Nhân viên', hourlyRate: 30000, baseSalary: 0, isActive: true, displayOrder: 6 },
+  { id: 7, fullName: 'Đức', role: 'Nhân viên', hourlyRate: 40000, baseSalary: 3000000, isActive: true, displayOrder: 7 },
+  { id: 8, fullName: 'Ngọc Anh', role: 'Nhân viên', hourlyRate: 35000, baseSalary: 0, isActive: true, displayOrder: 8 },
+  { id: 9, fullName: 'Minh Ánh', role: 'Nhân viên', hourlyRate: 35000, baseSalary: 0, isActive: true, displayOrder: 9 },
 ];
 
 const INITIAL_SHIFTS: ShiftTemplate[] = [
@@ -47,6 +53,7 @@ export function App() {
   };
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
+  const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'salary'>('salary');
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [shifts, setShifts] = useState<ShiftTemplate[]>(INITIAL_SHIFTS);
   const [assignments, setAssignments] = useState<Assignment[]>([
@@ -273,116 +280,157 @@ export function App() {
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto space-y-5">
-        {/* Top Header & Action Bar */}
-        <header className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {/* Brand info */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 flex items-center justify-center text-white shadow-md">
-              <Store className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  TẦNG 2 RESTAURANT
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <Sparkles className="w-3 h-3 text-emerald-600" /> Hệ thống xếp lịch
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                <Calendar className="w-4 h-4 text-emerald-700" />
-                <span>{weekLabel}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Week Navigation */}
-          <div className="flex items-center gap-1.5 self-start lg:self-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+        {/* Main Feature Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-2xl shadow-xs border border-slate-200">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={handlePrevWeek}
-              className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition"
-              title="Tuần trước"
+              onClick={() => setActiveMainTab('schedule')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                activeMainTab === 'schedule'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <Calendar className="w-4 h-4" />
+              <span>📅 Xếp Lịch Làm Việc (Hằng Tuần)</span>
             </button>
             <button
-              onClick={handleCurrentWeek}
-              className="px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-800 text-xs font-bold transition hover:bg-slate-50"
+              onClick={() => setActiveMainTab('salary')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                activeMainTab === 'salary'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
             >
-              Tuần Hiện Tại
-            </button>
-            <button
-              onClick={handleNextWeek}
-              className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition"
-              title="Tuần sau"
-            >
-              <ChevronRight className="w-4 h-4" />
+              <DollarSign className="w-4 h-4" />
+              <span>💰 Tính Tiền Lương (Hằng Ngày & Tháng)</span>
+              <span className="text-[10px] bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full font-black">
+                MỚI
+              </span>
             </button>
           </div>
 
-          {/* Quick Actions (Save, Copy, Download) */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleSave}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <Save className="w-4 h-4" />
-              <span>Lưu Lịch (DB)</span>
-            </button>
-
-            <button
-              onClick={handleCopyImage}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition hover:scale-[1.01] active:scale-[0.99]"
-              title="Chụp ảnh và copy để dán (Ctrl+V) thẳng vào Zalo"
-            >
-              <Copy className="w-4 h-4" />
-              <span>📋 Copy Ảnh Gửi Zalo</span>
-            </button>
-
-            <button
-              onClick={handleDownloadImage}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition hover:scale-[1.01] active:scale-[0.99]"
-              title="Tải ảnh PNG nét cao về máy"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Tải Ảnh PNG</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Schedule Table Component */}
-        <ScheduleTable
-          scheduleRef={scheduleTableRef}
-          employees={employees}
-          shifts={shifts}
-          assignments={assignments}
-          onAssignmentChange={handleAssignmentChange}
-          onBatchAssignmentChange={handleBatchAssignmentChange}
-          onAddEmployee={handleAddEmployee}
-          onDeleteEmployee={handleDeleteEmployee}
-          onToggleEmployeeRole={handleToggleEmployeeRole}
-          weekStartDate={currentMonday}
-        />
-
-        {/* Quick Guide Card */}
-        <div className="bg-gradient-to-r from-emerald-900/5 to-teal-900/5 border border-emerald-900/15 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-700" />
-              <span>Tính năng mới: Tự do Custom ca làm & Đổi ca nhiều ngày</span>
-            </div>
-            <p className="text-xs text-slate-600">
-              • Bấm vào bất kỳ ô nào ➔ Chọn tab <b>"✍️ Tự nhập ca riêng"</b> để gõ bất kỳ khung giờ nào (VD: 11h-16h, Ca gãy, Ca tiệc...).
-              <br />
-              • Có thể tích chọn <b>"Áp dụng cho nhiều ngày"</b> để điền nhanh ca đó cho cả tuần chỉ với 1 lần bấm!
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-bold text-emerald-800 bg-white px-3 py-1.5 rounded-lg border border-emerald-200 shadow-2xs">
-              ⚡ Gửi Zalo: Bấm "Copy Ảnh" ➔ Qua Zalo bấm Ctrl + V
-            </span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 pr-2">
+            <span>🌿 Tang2Manager</span>
           </div>
         </div>
+
+        {activeMainTab === 'salary' ? (
+          <SalaryManager employees={employees} />
+        ) : (
+          <>
+            {/* Top Header & Action Bar */}
+            <header className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Brand info */}
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 flex items-center justify-center text-white shadow-md">
+                  <Store className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                      TẦNG 2 RESTAURANT
+                    </h1>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <Sparkles className="w-3 h-3 text-emerald-600" /> Hệ thống xếp lịch
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                    <Calendar className="w-4 h-4 text-emerald-700" />
+                    <span>{weekLabel}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Week Navigation */}
+              <div className="flex items-center gap-1.5 self-start lg:self-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                <button
+                  onClick={handlePrevWeek}
+                  className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
+                  title="Tuần trước"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleCurrentWeek}
+                  className="px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-800 text-xs font-bold transition hover:bg-slate-50 cursor-pointer"
+                >
+                  Tuần Hiện Tại
+                </button>
+                <button
+                  onClick={handleNextWeek}
+                  className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
+                  title="Tuần sau"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Quick Actions (Save, Copy, Download) */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleSave}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Lưu Lịch (DB)</span>
+                </button>
+
+                <button
+                  onClick={handleCopyImage}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+                  title="Chụp ảnh và copy để dán (Ctrl+V) thẳng vào Zalo"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>📋 Copy Ảnh Gửi Zalo</span>
+                </button>
+
+                <button
+                  onClick={handleDownloadImage}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+                  title="Tải ảnh PNG nét cao về máy"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Tải Ảnh PNG</span>
+                </button>
+              </div>
+            </header>
+
+            {/* Schedule Table Component */}
+            <ScheduleTable
+              scheduleRef={scheduleTableRef}
+              employees={employees}
+              shifts={shifts}
+              assignments={assignments}
+              onAssignmentChange={handleAssignmentChange}
+              onBatchAssignmentChange={handleBatchAssignmentChange}
+              onAddEmployee={handleAddEmployee}
+              onDeleteEmployee={handleDeleteEmployee}
+              onToggleEmployeeRole={handleToggleEmployeeRole}
+              weekStartDate={currentMonday}
+            />
+
+            {/* Quick Guide Card */}
+            <div className="bg-gradient-to-r from-emerald-900/5 to-teal-900/5 border border-emerald-900/15 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-700" />
+                  <span>Tính năng xếp lịch: Tự do Custom ca làm & Đổi ca nhiều ngày</span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  • Bấm vào bất kỳ ô nào ➔ Chọn tab <b>"✍️ Tự nhập ca riêng"</b> để gõ bất kỳ khung giờ nào (VD: 11h-16h, Ca gãy, Ca tiệc...).
+                  <br />
+                  • Bấm vào nhãn <b>[NV]</b> hoặc <b>[Bếp]</b> cạnh tên nhân viên để đổi vai trò trực tiếp.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-emerald-800 bg-white px-3 py-1.5 rounded-lg border border-emerald-200 shadow-2xs">
+                  ⚡ Gửi Zalo: Bấm "Copy Ảnh" ➔ Qua Zalo bấm Ctrl + V (Nhớ tích chọn [HD])
+                </span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
