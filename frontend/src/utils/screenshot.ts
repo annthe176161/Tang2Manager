@@ -1,12 +1,15 @@
 import { toPng, toBlob } from 'html-to-image';
 
-export async function downloadScheduleImage(element: HTMLElement, filename = 'Lich_Lam_Nha_Hang.png') {
+export async function downloadScheduleImage(element: HTMLElement, filename = 'Lich_Lam_Nha_Hang_UltraHD.png') {
   try {
+    // Ultra HD 3x pixelRatio for razor-sharp text and borders (resolution > 3000px wide)
     const dataUrl = await toPng(element, {
-      quality: 0.98,
-      pixelRatio: 2, // 2x Retina resolution for super sharp images
+      quality: 1.0,
+      pixelRatio: 3,
       backgroundColor: '#ffffff',
+      cacheBust: true,
     });
+
     const link = document.createElement('a');
     link.download = filename;
     link.href = dataUrl;
@@ -20,10 +23,12 @@ export async function downloadScheduleImage(element: HTMLElement, filename = 'Li
 
 export async function copyScheduleImageToClipboard(element: HTMLElement): Promise<boolean> {
   try {
+    // Ultra HD 3x for clipboard
     const blob = await toBlob(element, {
-      quality: 0.98,
-      pixelRatio: 2,
+      quality: 1.0,
+      pixelRatio: 3,
       backgroundColor: '#ffffff',
+      cacheBust: true,
     });
 
     if (!blob) throw new Error('Không thể tạo blob ảnh');

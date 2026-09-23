@@ -297,10 +297,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         </div>
 
         {/* Main Schedule Table */}
-        <table className="w-full border-collapse border border-gray-400 text-sm">
+        <table className="w-full border-collapse border-2 border-gray-600 text-sm">
           <thead>
-            <tr className="bg-[#245839] text-white select-none">
-              <th className="border border-gray-400 py-2.5 px-4 font-semibold text-center min-w-[130px]">
+            <tr className="bg-[#204d30] text-white select-none">
+              <th className="border border-gray-500 py-3 px-4 font-bold text-center min-w-[130px] text-sm">
                 <div className="flex items-center justify-center gap-1.5">
                   <span>Nhân viên</span>
                   <span className="text-[10px] opacity-75">▼</span>
@@ -309,13 +309,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               {DAYS.map((day, idx) => (
                 <th
                   key={day.dayOfWeek}
-                  className="border border-gray-400 py-2.5 px-3 font-semibold text-center min-w-[115px]"
+                  className="border border-gray-500 py-3 px-3 font-bold text-center min-w-[115px] text-sm"
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <span>{day.name}</span>
                     <span className="text-[10px] opacity-75">▼</span>
                   </div>
-                  <div className="text-[11px] font-normal text-green-200">
+                  <div className="text-[11px] font-semibold text-green-200">
                     ({getDayDate(idx)})
                   </div>
                 </th>
@@ -329,7 +329,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-emerald-50/30 transition-colors group`}
               >
                 {/* Employee Name + Role Toggle Badge */}
-                <td className="border border-gray-400 py-3 px-3 text-center bg-white font-medium text-gray-800">
+                <td className="border border-gray-500 py-3.5 px-3 text-center bg-white font-bold text-gray-950 text-sm md:text-base">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>{emp.fullName}</span>
                     {onToggleEmployeeRole && (
@@ -375,10 +375,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                     <td
                       key={day.dayOfWeek}
                       onClick={() => handleCellClick(emp.id, emp.fullName, day.dayOfWeek, day.name)}
-                      className={`border border-gray-400 py-3 px-2 text-center cursor-pointer transition-all duration-150 ${cellClass}`}
+                      className={`border border-gray-500 py-3.5 px-2 text-center cursor-pointer transition-all duration-150 ${cellClass}`}
                       title="Bấm để chỉnh sửa hoặc tự nhập ca làm"
                     >
-                      <div className="min-h-[22px] flex items-center justify-center font-medium leading-tight">
+                      <div className="min-h-[22px] flex items-center justify-center font-bold text-sm tracking-tight text-gray-950 leading-tight">
                         {isOff || shiftText.trim().toLowerCase() === 'nghỉ' || shiftText.trim().toLowerCase() === 'off' ? (
                           <span className="opacity-0 select-none">&nbsp;</span>
                         ) : shiftText ? (
@@ -395,18 +395,18 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
             {/* Daily Stats Summary: Sáng (NV, Bếp) & Chiều (NV, Bếp) */}
             {/* 1. Ca Sáng */}
-            <tr className="bg-amber-50/70 border-t border-gray-400 text-xs text-slate-800">
-              <td className="border border-gray-400 py-2 px-2 text-center font-bold bg-amber-100/70 text-amber-950 whitespace-nowrap">
+            <tr className="bg-amber-50/70 border-t-2 border-gray-600 text-xs text-slate-800">
+              <td className="border border-gray-500 py-2.5 px-2 text-center font-extrabold bg-amber-100 text-amber-950 whitespace-nowrap">
                 ☀️ Ca Sáng
               </td>
               {DAYS.map((day) => {
                 const stats = getDayStats(day.dayOfWeek);
                 return (
-                  <td key={day.dayOfWeek} className="border border-gray-400 py-1.5 px-1 text-center font-medium">
+                  <td key={day.dayOfWeek} className="border border-gray-500 py-2 px-1 text-center font-bold">
                     <div className="flex items-center justify-center gap-1.5 text-xs">
-                      <span className="font-bold text-slate-800">{stats.morningNV} NV</span>
-                      <span className="text-gray-300">•</span>
-                      <span className="font-bold text-amber-700">{stats.morningBep} Bếp</span>
+                      <span className="font-extrabold text-slate-900">{stats.morningNV} NV</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="font-extrabold text-amber-800">{stats.morningBep} Bếp</span>
                     </div>
                   </td>
                 );
@@ -414,18 +414,18 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             </tr>
 
             {/* 2. Ca Chiều */}
-            <tr className="bg-sky-50/70 border-t border-gray-300 text-xs text-slate-800">
-              <td className="border border-gray-400 py-2 px-2 text-center font-bold bg-sky-100/70 text-sky-950 whitespace-nowrap">
+            <tr className="bg-sky-50/70 border-t border-gray-400 text-xs text-slate-800">
+              <td className="border border-gray-500 py-2.5 px-2 text-center font-extrabold bg-sky-100 text-sky-950 whitespace-nowrap">
                 🌙 Ca Chiều
               </td>
               {DAYS.map((day) => {
                 const stats = getDayStats(day.dayOfWeek);
                 return (
-                  <td key={day.dayOfWeek} className="border border-gray-400 py-1.5 px-1 text-center font-medium">
+                  <td key={day.dayOfWeek} className="border border-gray-500 py-2 px-1 text-center font-bold">
                     <div className="flex items-center justify-center gap-1.5 text-xs">
-                      <span className="font-bold text-slate-800">{stats.eveningNV} NV</span>
-                      <span className="text-gray-300">•</span>
-                      <span className="font-bold text-amber-700">{stats.eveningBep} Bếp</span>
+                      <span className="font-extrabold text-slate-900">{stats.eveningNV} NV</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="font-extrabold text-amber-800">{stats.eveningBep} Bếp</span>
                     </div>
                   </td>
                 );
@@ -433,18 +433,18 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             </tr>
 
             {/* 3. Nghỉ (OFF) */}
-            <tr className="bg-slate-50 border-t border-gray-300 text-[11px] text-slate-600">
-              <td className="border border-gray-400 py-1.5 px-2 text-center font-semibold bg-slate-200/80 text-slate-700 whitespace-nowrap">
+            <tr className="bg-slate-50 border-t border-gray-400 text-[11px] text-slate-600">
+              <td className="border border-gray-500 py-1.5 px-2 text-center font-bold bg-slate-200 text-slate-800 whitespace-nowrap">
                 Nghỉ (OFF)
               </td>
               {DAYS.map((day) => {
                 const stats = getDayStats(day.dayOfWeek);
                 return (
-                  <td key={day.dayOfWeek} className="border border-gray-400 py-1 px-1 text-center">
+                  <td key={day.dayOfWeek} className="border border-gray-500 py-1 px-1 text-center">
                     {stats.offCount > 0 ? (
-                      <span className="font-bold text-red-600">{stats.offCount} nghỉ</span>
+                      <span className="font-black text-red-600 text-xs">{stats.offCount} nghỉ</span>
                     ) : (
-                      <span className="text-slate-300 font-normal">0</span>
+                      <span className="text-slate-400 font-normal">0</span>
                     )}
                   </td>
                 );

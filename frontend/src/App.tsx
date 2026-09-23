@@ -222,8 +222,8 @@ export function App() {
     if (!scheduleTableRef.current) return;
     try {
       const dateStr = `${currentMonday.getDate()}_${currentMonday.getMonth() + 1}`;
-      await downloadScheduleImage(scheduleTableRef.current, `Lich_Lam_Nha_Hang_Tuan_${dateStr}.png`);
-      showToast('Đã chụp và tải ảnh lịch làm nét 2x về máy!');
+      await downloadScheduleImage(scheduleTableRef.current, `Lich_Lam_Tuan_${dateStr}_UltraHD.png`);
+      showToast('Đã tải ảnh Ultra HD! Gửi file này vào Zalo để giữ nét 100% không bị nén.');
     } catch {
       showToast('Không thể xuất ảnh, vui lòng thử lại!', 'error');
     }
@@ -233,7 +233,7 @@ export function App() {
     if (!scheduleTableRef.current) return;
     try {
       await copyScheduleImageToClipboard(scheduleTableRef.current);
-      showToast('📋 Đã copy ảnh vào Clipboard! Mở Zalo và ấn Ctrl + V để dán ngay.');
+      showToast('📋 Đã copy ảnh! Khi dán vào Zalo nhớ tích chọn nút [HD] trước khi gửi.');
     } catch {
       showToast('Trình duyệt chưa cho phép copy ảnh, vui lòng bấm nút "Tải Ảnh PNG"!', 'error');
     }
