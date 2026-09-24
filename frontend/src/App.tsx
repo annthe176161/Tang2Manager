@@ -17,7 +17,8 @@ import {
   Sparkles,
   Store,
   DollarSign,
-  Receipt
+  Receipt,
+  RotateCcw
 } from 'lucide-react';
 
 const INITIAL_EMPLOYEES: Employee[] = [
@@ -106,10 +107,80 @@ export function App() {
   ]);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Hidden employees in current week state (persisted per week)
+  const getHiddenEmpsKey = (d: Date) => `tang2_hidden_emps_${d.toISOString().split('T')[0]}`;
+  const [hiddenEmployeeIds, setHiddenEmployeeIds] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem(`tang2_hidden_emps_${currentMonday.toISOString().split('T')[0]}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Reload hidden employees when week changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getHiddenEmpsKey(currentMonday));
+      setHiddenEmployeeIds(saved ? JSON.parse(saved) : []);
+    } catch {
+      setHiddenEmployeeIds([]);
+    }
+  }, [currentMonday]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // Hide employee for current week
+  const handleHideEmployee = (id: number) => {
+    const emp = employees.find((e) => e.id === id);
+    const updated = [...hiddenEmployeeIds, id];
+    setHiddenEmployeeIds(updated);
+    try {
+      localStorage.setItem(getHiddenEmpsKey(currentMonday), JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast(`Đã tạm ẩn [${emp?.fullName || 'nhân viên'}] khỏi lịch tuần này!`);
+  };
+
+  // Unhide employee for current week
+  const handleUnhideEmployee = (id: number) => {
+    const emp = employees.find((e) => e.id === id);
+    const updated = hiddenEmployeeIds.filter((empId) => empId !== id);
+    setHiddenEmployeeIds(updated);
+    try {
+      localStorage.setItem(getHiddenEmpsKey(currentMonday), JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast(`Đã đưa [${emp?.fullName || 'nhân viên'}] trở lại bảng lịch!`);
+  };
+
+  // Unhide all employees
+  const handleUnhideAllEmployees = () => {
+    setHiddenEmployeeIds([]);
+    try {
+      localStorage.removeItem(getHiddenEmpsKey(currentMonday));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('Đã khôi phục hiển thị toàn bộ nhân viên!');
+  };
+
+  // Clear current week schedule
+  const handleClearWeekSchedule = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handleConfirmClearSchedule = () => {
+    setAssignments([]);
+    setShowClearConfirm(false);
+    showToast('Đã làm sạch toàn bộ ca làm trong tuần! Bạn có thể bắt đầu xếp lịch mới.');
   };
 
   // Fetch from backend API
@@ -283,50 +354,99 @@ export function App() {
       {/* Main Container */}
       <div className="max-w-7xl mx-auto space-y-5">
         {/* Main Feature Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-2xl shadow-xs border border-slate-200">
-          <div className="flex items-center gap-2 flex-wrap">
+        <nav className="bg-white/95 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl shadow-sm border border-slate-200/90">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
+            {/* Tab 1: Xếp lịch */}
             <button
               onClick={() => setActiveMainTab('schedule')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`group flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeMainTab === 'schedule'
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 ring-1 ring-emerald-700/50 scale-[1.01]'
+                  : 'bg-slate-50/80 hover:bg-emerald-50/70 text-slate-700 hover:text-emerald-950 border border-slate-200/60 hover:border-emerald-300/60'
               }`}
             >
-              <Calendar className="w-4 h-4" />
-              <span>📅 Xếp Lịch Làm Việc (Hằng Tuần)</span>
+              <div
+                className={`p-2 rounded-xl transition ${
+                  activeMainTab === 'schedule'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200/70 text-slate-700 group-hover:bg-emerald-100 group-hover:text-emerald-800'
+                }`}
+              >
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="tracking-tight text-sm sm:text-base font-extrabold">Xếp Lịch Làm Việc</span>
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-md hidden lg:inline-block ${
+                    activeMainTab === 'schedule'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-200/80 text-slate-600 group-hover:bg-emerald-200/70 group-hover:text-emerald-900'
+                  }`}
+                >
+                  Hằng tuần
+                </span>
+              </div>
             </button>
+
+            {/* Tab 2: Tính tiền lương */}
             <button
               onClick={() => setActiveMainTab('salary')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`group flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeMainTab === 'salary'
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 ring-1 ring-emerald-700/50 scale-[1.01]'
+                  : 'bg-slate-50/80 hover:bg-emerald-50/70 text-slate-700 hover:text-emerald-950 border border-slate-200/60 hover:border-emerald-300/60'
               }`}
             >
-              <DollarSign className="w-4 h-4" />
-              <span>💰 Tính Tiền Lương</span>
+              <div
+                className={`p-2 rounded-xl transition ${
+                  activeMainTab === 'salary'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200/70 text-slate-700 group-hover:bg-emerald-100 group-hover:text-emerald-800'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="tracking-tight text-sm sm:text-base font-extrabold">Tính Tiền Lương</span>
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-md hidden lg:inline-block ${
+                    activeMainTab === 'salary'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-200/80 text-slate-600 group-hover:bg-emerald-200/70 group-hover:text-emerald-900'
+                  }`}
+                >
+                  Chấm công
+                </span>
+              </div>
             </button>
+
+            {/* Tab 3: Hóa đơn & Nhập hàng */}
             <button
               onClick={() => setActiveMainTab('invoice')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`group flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeMainTab === 'invoice'
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 ring-1 ring-emerald-700/50 scale-[1.01]'
+                  : 'bg-slate-50/80 hover:bg-emerald-50/70 text-slate-700 hover:text-emerald-950 border border-slate-200/60 hover:border-emerald-300/60'
               }`}
             >
-              <Receipt className="w-4 h-4" />
-              <span>🧾 Tổng Hợp Hóa Đơn & Nhập Hàng</span>
-              <span className="text-[10px] bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full font-black">
-                MỚI
-              </span>
+              <div
+                className={`p-2 rounded-xl transition ${
+                  activeMainTab === 'invoice'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200/70 text-slate-700 group-hover:bg-emerald-100 group-hover:text-emerald-800'
+                }`}
+              >
+                <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="tracking-tight text-sm sm:text-base font-extrabold">Hóa Đơn & Nhập Hàng</span>
+                <span className="text-[10px] bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full font-black shadow-xs tracking-wider">
+                  MỚI
+                </span>
+              </div>
             </button>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 pr-2">
-            <span>🌿 Tang2Manager</span>
-          </div>
-        </div>
+        </nav>
 
         {activeMainTab === 'salary' ? (
           <SalaryManager employees={employees} />
@@ -381,8 +501,17 @@ export function App() {
                 </button>
               </div>
 
-              {/* Quick Actions (Save, Copy, Download) */}
+              {/* Quick Actions (Save, Copy, Download, Clear) */}
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleClearWeekSchedule}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200/90 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer"
+                  title="Xóa trắng toàn bộ ca làm trong tuần này để bắt đầu xếp lịch mới"
+                >
+                  <RotateCcw className="w-4 h-4 text-rose-600" />
+                  <span>🧹 Làm Sạch Lịch Tuần</span>
+                </button>
+
                 <button
                   onClick={handleSave}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
@@ -411,6 +540,53 @@ export function App() {
               </div>
             </header>
 
+            {/* Modal xác nhận Làm sạch lịch tuần */}
+            {showClearConfirm && (
+              <div
+                className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-150"
+                onClick={() => setShowClearConfirm(false)}
+              >
+                <div
+                  className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl shrink-0">
+                      <RotateCcw className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">
+                        Làm sạch lịch tuần này?
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {weekLabel}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    Thao tác này sẽ <b>xóa sạch toàn bộ các ca làm việc đã xếp</b> của tuần này về trạng thái trống (<code>--</code>) để bạn sẵn sàng xếp lịch mới cho nhân viên.
+                  </p>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => setShowClearConfirm(false)}
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleConfirmClearSchedule}
+                      className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/20 transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Xác nhận làm sạch</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Schedule Table Component */}
             <ScheduleTable
               scheduleRef={scheduleTableRef}
@@ -422,6 +598,10 @@ export function App() {
               onAddEmployee={handleAddEmployee}
               onDeleteEmployee={handleDeleteEmployee}
               onToggleEmployeeRole={handleToggleEmployeeRole}
+              hiddenEmployeeIds={hiddenEmployeeIds}
+              onHideEmployee={handleHideEmployee}
+              onUnhideEmployee={handleUnhideEmployee}
+              onUnhideAllEmployees={handleUnhideAllEmployees}
               weekStartDate={currentMonday}
             />
 

@@ -6,6 +6,9 @@ echo   DANG TU DONG BUILD VA CAP NHAT HE THONG TANG2MANAGER
 echo ========================================================
 echo.
 
+echo [0/3] Dang dong may chu Backend neu dang mo de cap nhat...
+taskkill /F /IM Tang2Manager.API.exe 2>nul
+
 cd /d "D:\Tang2Manager\frontend"
 echo [1/3] Dang bien dich Frontend React...
 call npm run build

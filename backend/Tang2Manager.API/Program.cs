@@ -3,8 +3,12 @@ using Tang2Manager.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Explicitly bind to port 5000
-builder.WebHost.UseUrls("http://localhost:5000");
+// Set default URL to port 5000 on all network interfaces (LAN/WiFi + localhost)
+if (string.IsNullOrEmpty(builder.Configuration["urls"]) && 
+    string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5000");
+}
 
 // 1. Add DbContext with SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -49,15 +53,38 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger"; // Available at http://localhost:5000/swagger
 });
 
+// Shortcut redirect to swagger
+app.MapGet("/api", () => Results.Redirect("/swagger"));
+app.MapGet("/docs", () => Results.Redirect("/swagger"));
+
 app.UseCors("AllowFrontend");
 
-// Serve React SPA static files from wwwroot
+// Serve React SPA static files from wwwroot with no-cache for HTML files
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+            ctx.Context.Response.Headers.Append("Pragma", "no-cache");
+            ctx.Context.Response.Headers.Append("Expires", "0");
+        }
+    }
+});
 
 app.MapControllers();
 
-// Fallback to index.html for SPA client-side routing
-app.MapFallbackToFile("index.html");
+// Fallback to index.html for SPA client-side routing with no-cache
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+        ctx.Context.Response.Headers.Append("Pragma", "no-cache");
+        ctx.Context.Response.Headers.Append("Expires", "0");
+    }
+});
 
 app.Run();

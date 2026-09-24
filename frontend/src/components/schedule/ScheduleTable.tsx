@@ -6,7 +6,9 @@ import {
   Check, 
   Layers, 
   UserPlus, 
-  X 
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface ScheduleTableProps {
@@ -31,6 +33,10 @@ interface ScheduleTableProps {
   onAddEmployee?: (name: string, role: string) => void;
   onDeleteEmployee?: (id: number) => void;
   onToggleEmployeeRole?: (id: number) => void;
+  hiddenEmployeeIds?: number[];
+  onHideEmployee?: (id: number) => void;
+  onUnhideEmployee?: (id: number) => void;
+  onUnhideAllEmployees?: () => void;
   weekStartDate: Date;
 }
 
@@ -63,8 +69,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onAddEmployee,
   onDeleteEmployee,
   onToggleEmployeeRole,
+  hiddenEmployeeIds = [],
+  onHideEmployee,
+  onUnhideEmployee,
+  onUnhideAllEmployees,
   weekStartDate,
 }) => {
+  const visibleEmployees = employees.filter((emp) => !hiddenEmployeeIds.includes(emp.id));
+  const hiddenEmployees = employees.filter((emp) => hiddenEmployeeIds.includes(emp.id));
   const [selectedCell, setSelectedCell] = useState<{
     employeeId: number;
     employeeName: string;
@@ -244,7 +256,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     let eveningBep = 0;
     let offCount = 0;
 
-    employees.forEach((emp) => {
+    visibleEmployees.forEach((emp) => {
       const a = getAssignment(emp.id, dayOfWeek);
       if (!a || !a.shiftText || a.shiftText.trim() === '') return;
 
@@ -323,12 +335,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {employees.map((emp, index) => (
+            {visibleEmployees.map((emp, index) => (
               <tr 
                 key={emp.id} 
                 className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-emerald-50/30 transition-colors group`}
               >
-                {/* Employee Name + Role Toggle Badge */}
+                {/* Employee Name + Role Toggle Badge + Hide / Delete Buttons */}
                 <td className="border border-gray-500 py-3.5 px-3 text-center bg-white font-bold text-gray-950 text-sm md:text-base">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>{emp.fullName}</span>
@@ -348,14 +360,26 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         {(emp.role || '').toLowerCase().includes('bếp') ? 'Bếp' : 'NV'}
                       </button>
                     )}
-                    {onDeleteEmployee && employees.length > 1 && (
+                    {onHideEmployee && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Xóa nhân viên ${emp.fullName}?`)) onDeleteEmployee(emp.id);
+                          onHideEmployee(emp.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 p-0.5 transition"
-                        title="Xóa nhân viên này"
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-600 p-0.5 transition cursor-pointer"
+                        title={`Tạm ẩn ${emp.fullName} khỏi lịch tuần này (có thể mở lại bất cứ lúc nào)`}
+                      >
+                        <EyeOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onDeleteEmployee && visibleEmployees.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Xóa hoàn toàn nhân viên ${emp.fullName} khỏi hệ thống?`)) onDeleteEmployee(emp.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 p-0.5 transition cursor-pointer"
+                        title="Xóa hẳn nhân viên này"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -454,18 +478,59 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         </table>
       </div>
 
-      {/* Button to add employee right under table */}
-      {onAddEmployee && (
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={() => setShowAddEmpModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-300 hover:border-emerald-500 bg-white text-slate-700 hover:text-emerald-700 text-xs font-bold shadow-2xs transition"
-          >
-            <UserPlus className="w-4 h-4 text-emerald-600" />
-            <span>+ Thêm Nhân Viên Mới</span>
-          </button>
-        </div>
-      )}
+      {/* Bottom Action Bar: Danh sách nhân viên tạm ẩn + Nút Thêm nhân viên */}
+      <div className="mt-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Khu vực danh sách nhân viên đang bị ẩn (nếu có) */}
+        {hiddenEmployees.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 p-2.5 bg-amber-50/90 border border-amber-300 rounded-xl text-xs shadow-2xs">
+            <div className="flex items-center gap-1.5 font-bold text-amber-900 shrink-0">
+              <EyeOff className="w-4 h-4 text-amber-700" />
+              <span>Đang tạm ẩn ({hiddenEmployees.length}):</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {hiddenEmployees.map((emp) => (
+                <button
+                  key={emp.id}
+                  onClick={() => onUnhideEmployee && onUnhideEmployee(emp.id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded-lg border border-amber-300 font-bold transition shadow-2xs cursor-pointer group"
+                  title={`Bấm vào đây để lôi ${emp.fullName} trở lại bảng lịch tuần này`}
+                >
+                  <span>{emp.fullName}</span>
+                  <span className="text-[10px] text-amber-700 font-normal">
+                    ({(emp.role || '').toLowerCase().includes('bếp') ? 'Bếp' : 'NV'})
+                  </span>
+                  <Eye className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 ml-0.5" />
+                </button>
+              ))}
+            </div>
+            {onUnhideAllEmployees && hiddenEmployees.length > 1 && (
+              <button
+                onClick={onUnhideAllEmployees}
+                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline ml-auto cursor-pointer px-1"
+              >
+                Hiện lại tất cả
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 hidden sm:flex items-center gap-1.5 italic">
+            <span>💡 Mẹo: Rê chuột vào tên nhân viên để Đổi vai trò [NV/Bếp], Tạm ẩn tuần này hoặc Xóa.</span>
+          </div>
+        )}
+
+        {/* Nút thêm nhân viên mới */}
+        {onAddEmployee && (
+          <div className="shrink-0 self-end sm:self-auto">
+            <button
+              onClick={() => setShowAddEmpModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 hover:border-emerald-600 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 text-xs font-bold shadow-2xs transition cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-600" />
+              <span>+ Thêm Nhân Viên Mới</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* MODAL: CUSTOM SHIFT & PRESET PICKER */}
       {selectedCell && (
