@@ -827,7 +827,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
                     }`}
                   >
-                    Phục vụ / NV
+                    Nhân viên
                   </button>
                   <button
                     type="button"

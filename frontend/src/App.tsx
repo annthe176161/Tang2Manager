@@ -248,28 +248,29 @@ export function App() {
 
   // Add new employee (persist to SQL Server)
   const handleAddEmployee = async (name: string, role: string) => {
+    const validRole = (role || '').toLowerCase().includes('bếp') ? 'Bếp' : 'Nhân viên';
     try {
       const created = await employeeApi.create({
         fullName: name,
-        role: role || 'Phục vụ',
+        role: validRole,
         hourlyRate: 35000,
         baseSalary: 0,
         displayOrder: employees.length + 1
       });
       setEmployees((prev) => [...prev, created]);
-      showToast(`Đã lưu nhân viên "${name}" vào cơ sở dữ liệu SQL Server!`);
+      showToast(`Đã lưu [${validRole}] "${name}" vào cơ sở dữ liệu SQL Server!`);
     } catch (err) {
       console.error(err);
       const newId = employees.length > 0 ? Math.max(...employees.map((e) => e.id)) + 1 : 1;
       const newEmp: Employee = {
         id: newId,
         fullName: name,
-        role: role || 'Phục vụ',
+        role: validRole,
         isActive: true,
         displayOrder: newId,
       };
       setEmployees((prev) => [...prev, newEmp]);
-      showToast(`Đã thêm nhân viên ${name} thành công!`);
+      showToast(`Đã thêm ${validRole} ${name} thành công!`);
     }
   };
 
