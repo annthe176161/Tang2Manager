@@ -440,8 +440,14 @@ export function App() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="tracking-tight text-sm sm:text-base font-extrabold">Hóa Đơn & Nhập Hàng</span>
-                <span className="text-[10px] bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full font-black shadow-xs tracking-wider">
-                  MỚI
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-md hidden lg:inline-block ${
+                    activeMainTab === 'invoice'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-200/80 text-slate-600 group-hover:bg-emerald-200/70 group-hover:text-emerald-900'
+                  }`}
+                >
+                  Chi phí
                 </span>
               </div>
             </button>
