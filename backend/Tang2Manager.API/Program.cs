@@ -3,6 +3,9 @@ using Tang2Manager.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Explicitly bind to port 5000
+builder.WebHost.UseUrls("http://localhost:5000");
+
 // 1. Add DbContext with SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

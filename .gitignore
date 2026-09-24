@@ -6,6 +6,7 @@
 *.suo
 *.userprefs
 *.sln.docstates
+dist_app/
 
 # Node / Vite / Frontend
 **/node_modules/
