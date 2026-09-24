@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import type { Employee, DailyTimesheet } from '../../types';
+import type { Employee, DailyTimesheet, MonthlyPayrollRecord } from '../../types';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from '../../utils/screenshot';
+import { exportSalaryToExcel } from '../../utils/exportSalaryExcel';
+import { salaryApi } from '../../services/api';
 import { 
   Camera, 
   Copy, 
@@ -8,7 +10,9 @@ import {
   DollarSign, 
   ArrowLeft,
   Edit2,
-  Trash2
+  Trash2,
+  FileSpreadsheet,
+  Database
 } from 'lucide-react';
 
 interface SalaryManagerProps {
@@ -102,6 +106,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return saved ? Number(saved) : 2026;
   });
   const [activeEmployeeId, setActiveEmployeeId] = useState<number | null>(null);
+  const [isDbSynced, setIsDbSynced] = useState<boolean>(true);
 
   const summaryTableRef = useRef<HTMLDivElement>(null);
   const detailTableRef = useRef<HTMLDivElement>(null);
@@ -124,8 +129,26 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return rates;
   });
 
-  // Modal for editing employee rate & base salary
-  const [editingRateEmp, setEditingRateEmp] = useState<{ id: number; name: string; hourly: number; base: number } | null>(null);
+  // Employee debts / advances per period
+  const [employeeDebts, setEmployeeDebts] = useState<Record<number, { amount: number; note: string }>>(() => {
+    try {
+      const saved = localStorage.getItem(`tang2_salary_debts_${selectedYear}_${selectedMonth}`);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {};
+  });
+
+  // Modal for editing employee rate, base salary & debt
+  const [editingRateEmp, setEditingRateEmp] = useState<{
+    id: number;
+    name: string;
+    hourly: number;
+    base: number;
+    debt: number;
+    debtNote: string;
+  } | null>(null);
 
   // Modal for confirming clear data
   const [showClearModal, setShowClearModal] = useState<boolean>(false);
@@ -170,6 +193,44 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return loadTimesheetsForPeriod(selectedMonth, selectedYear, employees, employeeRates);
   });
 
+  // Save to SQL Server Database & local cache
+  const persistToDb = async (
+    ts: Record<number, DailyTimesheet[]>,
+    rates: Record<number, { hourly: number; base: number }>,
+    debts: Record<number, { amount: number; note: string }>
+  ) => {
+    const requests = employees.map((emp) => {
+      const rate = rates[emp.id]?.hourly || emp.hourlyRate || 35000;
+      const base = rates[emp.id]?.base || 0;
+      const debt = debts[emp.id]?.amount || 0;
+      const note = debts[emp.id]?.note || '';
+      const list = ts[emp.id] || [];
+      const totalH = list.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
+      const totalSalary = totalH * rate + base - debt;
+
+      return {
+        employeeId: emp.id,
+        year: selectedYear,
+        month: selectedMonth,
+        hourlyRate: rate,
+        baseSalary: base,
+        debtAmount: debt,
+        debtNote: note,
+        totalHours: totalH,
+        totalSalary,
+        timesheetDetailsJson: JSON.stringify(list),
+      };
+    });
+
+    try {
+      await salaryApi.savePayroll(requests);
+      setIsDbSynced(true);
+    } catch (e) {
+      console.error('Failed to sync to database:', e);
+      setIsDbSynced(false);
+    }
+  };
+
   // Save timesheets state & localStorage helper
   const saveTimesheets = (updated: Record<number, DailyTimesheet[]>) => {
     setTimesheets(updated);
@@ -178,6 +239,58 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       localStorage.setItem(key, JSON.stringify(updated));
     } catch (e) {
       console.error(e);
+    }
+    persistToDb(updated, employeeRates, employeeDebts);
+  };
+
+  // Load from SQL Server Database when month/year changes
+  const loadFromDatabase = async (m: number, y: number) => {
+    try {
+      const dbRecords = await salaryApi.getPayroll(m, y);
+      if (dbRecords && Array.isArray(dbRecords) && dbRecords.length > 0) {
+        const newRates: Record<number, { hourly: number; base: number }> = {};
+        const newDebts: Record<number, { amount: number; note: string }> = {};
+        const newTimesheets: Record<number, DailyTimesheet[]> = {};
+
+        dbRecords.forEach((rec: MonthlyPayrollRecord) => {
+          newRates[rec.employeeId] = {
+            hourly: rec.hourlyRate,
+            base: rec.baseSalary,
+          };
+          newDebts[rec.employeeId] = {
+            amount: rec.debtAmount || 0,
+            note: rec.debtNote || '',
+          };
+
+          if (rec.timesheetDetailsJson) {
+            try {
+              const parsed = JSON.parse(rec.timesheetDetailsJson);
+              if (Array.isArray(parsed) && parsed.length === getDaysInMonth(m, y)) {
+                newTimesheets[rec.employeeId] = parsed;
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        });
+
+        setEmployeeRates((prev) => ({ ...prev, ...newRates }));
+        setEmployeeDebts((prev) => ({ ...prev, ...newDebts }));
+        if (Object.keys(newTimesheets).length > 0) {
+          setTimesheets((prev) => {
+            const merged = { ...prev };
+            Object.keys(newTimesheets).forEach((k) => {
+              const id = Number(k);
+              merged[id] = newTimesheets[id];
+            });
+            return merged;
+          });
+        }
+        setIsDbSynced(true);
+      }
+    } catch (err) {
+      console.warn('Backend DB not reachable, using local data:', err);
+      setIsDbSynced(false);
     }
   };
 
@@ -190,6 +303,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       console.error(e);
     }
     setTimesheets(loadTimesheetsForPeriod(selectedMonth, selectedYear, employees, employeeRates));
+    loadFromDatabase(selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
   // Save rates to localStorage when updated
@@ -298,26 +412,36 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return currentTimesheet.reduce((sum, item) => sum + (item.isOff ? 0 : item.dailyPay), 0);
   }, [currentTimesheet]);
 
-  // Overall totals across all employees for Image 1
+  // Overall totals across all employees including debt
   const allEmployeesSalarySummary = useMemo(() => {
     return employees.map((emp) => {
       const rate = employeeRates[emp.id]?.hourly || 35000;
       const base = employeeRates[emp.id]?.base || 0;
+      const debt = employeeDebts[emp.id]?.amount || 0;
+      const debtNote = employeeDebts[emp.id]?.note || '';
       const ts = timesheets[emp.id] || [];
       const totalH = ts.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
-      const totalSalary = totalH * rate + base;
+      const hoursPay = totalH * rate;
+      const totalSalary = hoursPay + base - debt;
       return {
         id: emp.id,
         name: emp.fullName,
+        role: emp.role || 'Nhân viên',
         hourlyRate: rate,
         totalHours: totalH,
+        hoursPay,
         baseSalary: base,
+        debtAmount: debt,
+        debtNote,
         totalSalary,
       };
     });
-  }, [employees, employeeRates, timesheets]);
+  }, [employees, employeeRates, timesheets, employeeDebts]);
 
   const totalAllHours = allEmployeesSalarySummary.reduce((s, e) => s + e.totalHours, 0);
+  const totalAllHoursPay = allEmployeesSalarySummary.reduce((s, e) => s + e.hoursPay, 0);
+  const totalAllBaseSalary = allEmployeesSalarySummary.reduce((s, e) => s + e.baseSalary, 0);
+  const totalAllDebt = allEmployeesSalarySummary.reduce((s, e) => s + e.debtAmount, 0);
   const totalAllSalary = allEmployeesSalarySummary.reduce((s, e) => s + e.totalSalary, 0);
 
   // Handlers for edit day
@@ -351,11 +475,17 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     saveTimesheets({ ...timesheets, [activeEmployeeId]: updated });
 
     setEditingDay(null);
-    showToast(`Đã lưu ngày ${editingDay.day}/${selectedMonth} thành công!`);
+    showToast(`Đã lưu ngày ${editingDay.day}/${selectedMonth} vào Database thành công!`);
   };
 
   // Clear / Reset Timesheet Data
-  const handleClearData = () => {
+  const handleClearData = async () => {
+    try {
+      await salaryApi.clearPayroll(selectedYear, selectedMonth, activeEmployeeId || undefined);
+    } catch (e) {
+      console.error('Failed to clear in database:', e);
+    }
+
     if (activeEmployeeId) {
       const rate = employeeRates[activeEmployeeId]?.hourly || 35000;
       const empty = createPeriodTimesheet(activeEmployeeId, rate, selectedMonth, selectedYear, false);
@@ -363,7 +493,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         ...timesheets,
         [activeEmployeeId]: empty,
       });
-      showToast(`Đã xóa sạch giờ làm của ${activeEmployee?.fullName} Tháng ${selectedMonth}/${selectedYear}!`);
+      showToast(`Đã xóa sạch giờ làm của ${activeEmployee?.fullName} Tháng ${selectedMonth}/${selectedYear} trong Database!`);
     } else {
       const updated: Record<number, DailyTimesheet[]> = {};
       employees.forEach((emp) => {
@@ -371,9 +501,21 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         updated[emp.id] = createPeriodTimesheet(emp.id, rate, selectedMonth, selectedYear, false);
       });
       saveTimesheets(updated);
-      showToast(`Đã xóa sạch dữ liệu chấm công toàn bộ nhân viên Tháng ${selectedMonth}/${selectedYear}!`);
+      showToast(`Đã xóa sạch dữ liệu chấm công toàn bộ nhân viên Tháng ${selectedMonth}/${selectedYear} trong Database!`);
     }
     setShowClearModal(false);
+  };
+
+  // Export Excel handler for boss
+  const handleExportExcel = () => {
+    exportSalaryToExcel(
+      selectedMonth,
+      selectedYear,
+      allEmployeesSalarySummary,
+      timesheets,
+      employees
+    );
+    showToast(`Đã xuất file Excel bảng lương Tháng ${selectedMonth}/${selectedYear} gửi sếp thành công!`);
   };
 
   // Screenshot handlers
@@ -436,6 +578,10 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                   ))}
                 </select>
               </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+                <Database className={`w-3.5 h-3.5 ${isDbSynced ? 'text-emerald-600' : 'text-amber-500'}`} />
+                <span>{isDbSynced ? 'SQL Server DB: Đã lưu' : 'Đang đồng bộ...'}</span>
+              </div>
             </div>
             <p className="text-xs text-slate-500 font-semibold mt-0.5">
               {activeEmployeeId
@@ -456,6 +602,16 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
               <span>← Bảng Lương Tổng</span>
             </button>
           ) : null}
+
+          {/* Nút Xuất File Excel gửi sếp */}
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition"
+            title="Xuất bảng lương tổng hợp và chấm công chi tiết ra file Excel (.xlsx) gửi sếp"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Xuất Excel gửi sếp</span>
+          </button>
 
           {/* Nút Xóa Dữ Liệu */}
           <button
@@ -518,33 +674,48 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
             <table className="w-full border-collapse border-2 border-gray-600 text-sm">
               <thead>
                 <tr className="bg-[#245839] text-white font-extrabold select-none">
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[140px]">
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[120px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <span>Tên</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[140px]">
+                  <th className="border border-gray-500 py-3 px-2 text-center min-w-[90px]">
+                    <span>Bộ phận</span>
+                  </th>
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[120px]">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Lương theo giờ</span>
+                      <span>Lương/giờ</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[190px]">
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Tổng số giờ làm trong tháng</span>
+                      <span>Tổng giờ</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[180px]">
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Tổng lương nhận tháng</span>
+                      <span>Thành tiền giờ</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[140px]">
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[120px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <span>Lương cứng</span>
+                      <span className="text-[10px] opacity-75">▼</span>
+                    </div>
+                  </th>
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[140px] bg-rose-900/30">
+                    <div className="flex items-center justify-center gap-1.5 text-amber-200">
+                      <span>Công nợ / Ứng</span>
+                      <span className="text-[10px] opacity-75">▼</span>
+                    </div>
+                  </th>
+                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[170px]">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Tổng lương thực lĩnh</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
@@ -559,18 +730,32 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     title={`Bấm để xem chi tiết chấm công ${daysInMonth} ngày của nhân viên này`}
                   >
                     {/* Tên */}
-                    <td className="border border-gray-500 py-3 px-4 text-center font-bold text-gray-900 bg-white">
+                    <td className="border border-gray-500 py-3 px-3 text-center font-bold text-gray-900 bg-white">
                       <span>{emp.name}</span>
+                    </td>
+
+                    {/* Bộ phận */}
+                    <td className="border border-gray-500 py-3 px-2 text-center bg-white">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${emp.role === 'Bếp' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-800 border border-slate-300'}`}>
+                        {emp.role}
+                      </span>
                     </td>
 
                     {/* Lương theo giờ */}
                     <td
-                      className="border border-gray-500 py-3 px-4 text-center font-bold text-gray-800 hover:bg-emerald-100/50"
+                      className="border border-gray-500 py-3 px-3 text-center font-bold text-gray-800 hover:bg-emerald-100/50"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditingRateEmp({ id: emp.id, name: emp.name, hourly: emp.hourlyRate, base: emp.baseSalary });
+                        setEditingRateEmp({
+                          id: emp.id,
+                          name: emp.name,
+                          hourly: emp.hourlyRate,
+                          base: emp.baseSalary,
+                          debt: emp.debtAmount,
+                          debtNote: emp.debtNote || '',
+                        });
                       }}
-                      title="Bấm để sửa đơn giá giờ / lương cứng"
+                      title="Bấm để sửa đơn giá giờ / lương cứng / công nợ"
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span>{emp.hourlyRate.toLocaleString('vi-VN')}</span>
@@ -579,25 +764,72 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     </td>
 
                     {/* Tổng số giờ làm trong tháng */}
-                    <td className="border border-gray-500 py-3 px-4 text-center font-bold text-gray-900">
+                    <td className="border border-gray-500 py-3 px-3 text-center font-bold text-gray-900">
                       {emp.totalHours > 0 ? emp.totalHours : 0}
                     </td>
 
-                    {/* Tổng lương nhận tháng */}
-                    <td className="border border-gray-500 py-3 px-4 text-center font-extrabold text-emerald-800">
-                      {emp.totalSalary.toLocaleString('vi-VN')}
+                    {/* Thành tiền giờ làm */}
+                    <td className="border border-gray-500 py-3 px-3 text-center font-bold text-slate-800">
+                      {emp.hoursPay.toLocaleString('vi-VN')}
                     </td>
 
                     {/* Lương cứng */}
                     <td
-                      className="border border-gray-500 py-3 px-4 text-center font-bold text-gray-800 hover:bg-emerald-100/50"
+                      className="border border-gray-500 py-3 px-3 text-center font-bold text-gray-800 hover:bg-emerald-100/50"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditingRateEmp({ id: emp.id, name: emp.name, hourly: emp.hourlyRate, base: emp.baseSalary });
+                        setEditingRateEmp({
+                          id: emp.id,
+                          name: emp.name,
+                          hourly: emp.hourlyRate,
+                          base: emp.baseSalary,
+                          debt: emp.debtAmount,
+                          debtNote: emp.debtNote || '',
+                        });
                       }}
-                      title="Bấm để sửa đơn giá giờ / lương cứng"
+                      title="Bấm để sửa lương cứng / công nợ"
                     >
                       {emp.baseSalary > 0 ? emp.baseSalary.toLocaleString('vi-VN') : ''}
+                    </td>
+
+                    {/* Cột Công nợ / Tạm ứng */}
+                    <td
+                      className="border border-gray-500 py-3 px-3 text-center font-bold hover:bg-rose-100/60"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingRateEmp({
+                          id: emp.id,
+                          name: emp.name,
+                          hourly: emp.hourlyRate,
+                          base: emp.baseSalary,
+                          debt: emp.debtAmount,
+                          debtNote: emp.debtNote || '',
+                        });
+                      }}
+                      title="Bấm để sửa công nợ / tạm ứng"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {emp.debtAmount > 0 ? (
+                            <span className="text-rose-600 font-extrabold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 text-xs">
+                              -{emp.debtAmount.toLocaleString('vi-VN')}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">0</span>
+                          )}
+                          <Edit2 className="w-3 h-3 text-slate-400 opacity-60 hover:opacity-100" />
+                        </div>
+                        {emp.debtNote ? (
+                          <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] mt-0.5" title={emp.debtNote}>
+                            ({emp.debtNote})
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+
+                    {/* Tổng lương nhận tháng */}
+                    <td className="border border-gray-500 py-3 px-4 text-center font-extrabold text-emerald-800 bg-emerald-50/50">
+                      {emp.totalSalary.toLocaleString('vi-VN')}
                     </td>
                   </tr>
                 ))}
@@ -605,22 +837,24 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 {/* Dòng Tổng (Khớp 100% hàng cuối ô đỏ Tổng trong Ảnh 1) */}
                 <tr className="bg-white font-black text-sm">
                   {/* Ô đỏ Tổng */}
-                  <td className="border border-gray-500 py-3 px-4 text-center bg-[#ff0000] text-white font-black text-base">
+                  <td colSpan={2} className="border border-gray-500 py-3 px-4 text-center bg-[#ff0000] text-white font-black text-base">
                     Tổng
                   </td>
-                  <td className="border border-gray-500 py-3 px-4 text-center bg-white"></td>
-                  <td className="border border-gray-500 py-3 px-4 text-center font-black text-gray-900">
+                  <td className="border border-gray-500 py-3 px-2 text-center bg-white"></td>
+                  <td className="border border-gray-500 py-3 px-3 text-center font-black text-gray-900">
                     {totalAllHours}
                   </td>
-                  <td className="border border-gray-500 py-3 px-4 text-center font-black text-emerald-900 text-base">
-                    {totalAllSalary.toLocaleString('vi-VN')}
+                  <td className="border border-gray-500 py-3 px-3 text-center font-black text-slate-800">
+                    {totalAllHoursPay.toLocaleString('vi-VN')}
                   </td>
-                  <td className="border border-gray-500 py-3 px-4 text-center bg-white font-black text-gray-900">
-                    {allEmployeesSalarySummary.reduce((s, e) => s + e.baseSalary, 0) > 0
-                      ? allEmployeesSalarySummary
-                          .reduce((s, e) => s + e.baseSalary, 0)
-                          .toLocaleString('vi-VN')
-                      : ''}
+                  <td className="border border-gray-500 py-3 px-3 text-center font-black text-slate-800">
+                    {totalAllBaseSalary > 0 ? totalAllBaseSalary.toLocaleString('vi-VN') : ''}
+                  </td>
+                  <td className="border border-gray-500 py-3 px-3 text-center font-black text-rose-700">
+                    {totalAllDebt > 0 ? `-${totalAllDebt.toLocaleString('vi-VN')}` : '0'}
+                  </td>
+                  <td className="border border-gray-500 py-3 px-4 text-center font-black text-emerald-950 text-base bg-emerald-100/70">
+                    {totalAllSalary.toLocaleString('vi-VN')}
                   </td>
                 </tr>
               </tbody>
@@ -896,24 +1130,27 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         </div>
       )}
 
-      {/* MODAL: CHỈNH SỬA ĐƠN GIÁ LƯƠNG & LƯƠNG CỨNG */}
+      {/* MODAL: CHỈNH SỬA ĐƠN GIÁ LƯƠNG, LƯƠNG CỨNG & CÔNG NỢ */}
       {editingRateEmp && (
         <div
           className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
           onClick={() => setEditingRateEmp(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-slate-200"
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-black text-slate-800 mb-3 flex items-center justify-between border-b pb-2">
-              <span>Cài đặt lương: {editingRateEmp.name}</span>
+              <span className="flex items-center gap-1.5">
+                <span>Cài đặt lương & công nợ:</span>
+                <span className="text-emerald-700 underline">{editingRateEmp.name}</span>
+              </span>
               <button onClick={() => setEditingRateEmp(null)} className="text-slate-400 hover:text-slate-600">
                 ✕
               </button>
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Lương theo giờ (VNĐ/tiếng):
@@ -950,31 +1187,88 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 />
               </div>
 
+              <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-rose-900">
+                    Công nợ / Tạm ứng trong tháng (VNĐ):
+                  </label>
+                  <span className="text-[11px] text-rose-600 font-semibold">(Trừ vào tổng lương)</span>
+                </div>
+                <input
+                  type="number"
+                  step="50000"
+                  value={editingRateEmp.debt}
+                  onChange={(e) =>
+                    setEditingRateEmp({
+                      ...editingRateEmp,
+                      debt: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="0"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-rose-300 font-bold text-rose-700 focus:ring-2 focus:ring-rose-500 focus:outline-hidden bg-white"
+                />
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-0.5">
+                    Lý do / Ghi chú công nợ:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRateEmp.debtNote}
+                    onChange={(e) =>
+                      setEditingRateEmp({
+                        ...editingRateEmp,
+                        debtNote: e.target.value,
+                      })
+                    }
+                    placeholder="VD: Ứng lương ngày 15/9, phạt rơi vỡ..."
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 font-medium focus:ring-2 focus:ring-emerald-600 focus:outline-hidden bg-white"
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-3 border-t">
                 <button
                   type="button"
                   onClick={() => {
-                    setEmployeeRates((prev) => ({
-                      ...prev,
+                    const newRates = {
+                      ...employeeRates,
                       [editingRateEmp.id]: {
                         hourly: editingRateEmp.hourly,
                         base: editingRateEmp.base,
                       },
-                    }));
+                    };
+                    const newDebts = {
+                      ...employeeDebts,
+                      [editingRateEmp.id]: {
+                        amount: editingRateEmp.debt,
+                        note: editingRateEmp.debtNote,
+                      },
+                    };
+                    setEmployeeRates(newRates);
+                    setEmployeeDebts(newDebts);
+                    try {
+                      localStorage.setItem(`tang2_salary_debts_${selectedYear}_${selectedMonth}`, JSON.stringify(newDebts));
+                    } catch (e) {
+                      console.error(e);
+                    }
+
                     // update hourlyRate in existing timesheet
                     const list = timesheets[editingRateEmp.id] || [];
-                    const updated = list.map((d) => ({
+                    const updatedTimesheet = list.map((d) => ({
                       ...d,
                       hourlyRate: editingRateEmp.hourly,
                       dailyPay: d.isOff ? 0 : d.totalHours * editingRateEmp.hourly,
                     }));
-                    saveTimesheets({ ...timesheets, [editingRateEmp.id]: updated });
+                    const updatedAllTimesheets = { ...timesheets, [editingRateEmp.id]: updatedTimesheet };
+                    setTimesheets(updatedAllTimesheets);
+
+                    persistToDb(updatedAllTimesheets, newRates, newDebts);
                     setEditingRateEmp(null);
-                    showToast(`Đã cập nhật mức lương cho ${editingRateEmp.name}!`);
+                    showToast(`Đã lưu lương & công nợ cho ${editingRateEmp.name} vào Database!`);
                   }}
                   className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-sm shadow-md transition"
                 >
-                  Lưu mức lương
+                  Lưu cài đặt
                 </button>
                 <button
                   type="button"

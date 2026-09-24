@@ -25,10 +25,29 @@ export interface DailyTimesheet {
 export interface EmployeeMonthlySalary {
   employeeId: number;
   employeeName: string;
+  role: string;
   hourlyRate: number;
   baseSalary: number;
+  debtAmount: number;
+  debtNote?: string;
+  totalHours: number;
+  hoursPay: number; // totalHours * hourlyRate
+  totalSalary: number; // hoursPay + baseSalary - debtAmount
+}
+
+export interface MonthlyPayrollRecord {
+  employeeId: number;
+  fullName: string;
+  role: string;
+  year: number;
+  month: number;
+  hourlyRate: number;
+  baseSalary: number;
+  debtAmount: number;
+  debtNote?: string;
   totalHours: number;
   totalSalary: number;
+  timesheetDetailsJson?: string | null;
 }
 
 export interface ShiftTemplate {

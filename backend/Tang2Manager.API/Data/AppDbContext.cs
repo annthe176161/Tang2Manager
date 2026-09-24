@@ -15,10 +15,21 @@ public class AppDbContext : DbContext
     public DbSet<ScheduleAssignment> ScheduleAssignments => Set<ScheduleAssignment>();
     public DbSet<InvoiceCategory> InvoiceCategories => Set<InvoiceCategory>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<MonthlyPayroll> MonthlyPayrolls => Set<MonthlyPayroll>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<MonthlyPayroll>(entity =>
+        {
+            entity.HasIndex(e => new { e.EmployeeId, e.Year, e.Month }).IsUnique();
+            entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
+            entity.Property(e => e.BaseSalary).HasPrecision(18, 2);
+            entity.Property(e => e.DebtAmount).HasPrecision(18, 2);
+            entity.Property(e => e.TotalHours).HasPrecision(18, 2);
+            entity.Property(e => e.TotalSalary).HasPrecision(18, 2);
+        });
 
         // Seed default Shift Templates
         modelBuilder.Entity<ShiftTemplate>().HasData(

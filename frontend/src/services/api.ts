@@ -98,3 +98,34 @@ export const invoiceApi = {
     return res.data;
   },
 };
+
+export const salaryApi = {
+  getPayroll: async (month: number, year: number) => {
+    const res = await api.get('/salary', {
+      params: { month, year },
+    });
+    return res.data;
+  },
+
+  savePayroll: async (records: Array<{
+    employeeId: number;
+    year: number;
+    month: number;
+    hourlyRate: number;
+    baseSalary: number;
+    debtAmount: number;
+    debtNote?: string;
+    totalHours: number;
+    totalSalary: number;
+    timesheetDetailsJson?: string | null;
+  }>) => {
+    const res = await api.post('/salary/save', records);
+    return res.data;
+  },
+
+  clearPayroll: async (year: number, month: number, employeeId?: number) => {
+    const res = await api.post('/salary/clear', { year, month, employeeId });
+    return res.data;
+  },
+};
+
