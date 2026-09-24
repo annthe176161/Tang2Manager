@@ -7,51 +7,62 @@ import {
   Check, 
   DollarSign, 
   ArrowLeft,
-  Edit2
+  Edit2,
+  Trash2
 } from 'lucide-react';
 
 interface SalaryManagerProps {
   employees: Employee[];
 }
 
-// Initial mock daily timesheet matching user's Image 2 (for employee "An" in September)
-const generateInitialTimesheet = (employeeId: number, hourlyRate: number): DailyTimesheet[] => {
-  const daysInMonth = 30; // Tháng 9 có 30 ngày
+// Initial mock daily timesheet matching user's Image 2 (for employee "An" in September 2026)
+const image2Sample: Record<number, { start?: string; end?: string; hours?: number; isOff?: boolean }> = {
+  1: { start: '17h', end: '23h', hours: 6 },
+  2: { start: '17h', end: '00h', hours: 7 },
+  3: { start: '11h', end: '21h', hours: 7 },
+  4: { start: '18h', end: '22h30', hours: 4.5 },
+  5: { start: '10h', end: '22h30', hours: 11.5 },
+  6: { start: '10h', end: '22h30', hours: 11.5 },
+  7: { isOff: true, hours: 0 },
+  8: { start: '17h', end: '22h30', hours: 5.5 },
+  9: { isOff: true, hours: 0 },
+  10: { isOff: true, hours: 0 },
+  11: { isOff: true, hours: 0 },
+  12: { start: '17h', end: '22h', hours: 5 },
+  13: { start: '10h', end: '21h', hours: 10 },
+  14: { isOff: true, hours: 0 },
+  15: { isOff: true, hours: 0 },
+  16: { isOff: true, hours: 0 },
+  17: { start: '17h', end: '22h30', hours: 5.5 },
+  18: { isOff: true, hours: 0 },
+  19: { isOff: true, hours: 0 },
+  20: { start: '11h', end: '22h', hours: 9 },
+};
+
+// Calculate accurate days in month (handling leap years like Feb 2028: 29 days, Feb 2027: 28 days)
+const getDaysInMonth = (month: number, year: number): number => {
+  return new Date(year, month, 0).getDate();
+};
+
+const createPeriodTimesheet = (
+  employeeId: number,
+  hourlyRate: number,
+  month: number,
+  year: number,
+  withSample: boolean = false
+): DailyTimesheet[] => {
+  const daysInMonth = getDaysInMonth(month, year);
   const result: DailyTimesheet[] = [];
 
-  // Data map from user's Image 2
-  const image2Sample: Record<number, { start?: string; end?: string; hours?: number; isOff?: boolean }> = {
-    1: { start: '17h', end: '23h', hours: 6 },
-    2: { start: '17h', end: '00h', hours: 7 },
-    3: { start: '11h', end: '21h', hours: 7 },
-    4: { start: '18h', end: '22h30', hours: 4.5 },
-    5: { start: '10h', end: '22h30', hours: 11.5 },
-    6: { start: '10h', end: '22h30', hours: 11.5 },
-    7: { isOff: true, hours: 0 },
-    8: { start: '17h', end: '22h30', hours: 5.5 },
-    9: { isOff: true, hours: 0 },
-    10: { isOff: true, hours: 0 },
-    11: { isOff: true, hours: 0 },
-    12: { start: '17h', end: '22h', hours: 5 },
-    13: { start: '10h', end: '21h', hours: 10 },
-    14: { isOff: true, hours: 0 },
-    15: { isOff: true, hours: 0 },
-    16: { isOff: true, hours: 0 },
-    17: { start: '17h', end: '22h30', hours: 5.5 },
-    18: { isOff: true, hours: 0 },
-    19: { isOff: true, hours: 0 },
-    20: { start: '11h', end: '22h', hours: 9 },
-  };
-
   for (let d = 1; d <= daysInMonth; d++) {
-    const sample = image2Sample[d];
-    if (sample) {
+    if (withSample && image2Sample[d]) {
+      const sample = image2Sample[d];
       const isOff = sample.isOff || false;
       const hours = sample.hours || 0;
       result.push({
         employeeId,
         day: d,
-        dateStr: `${d}/9`,
+        dateStr: `${d}/${month}`,
         startTime: sample.start || '',
         endTime: sample.end || '',
         totalHours: hours,
@@ -63,7 +74,7 @@ const generateInitialTimesheet = (employeeId: number, hourlyRate: number): Daily
       result.push({
         employeeId,
         day: d,
-        dateStr: `${d}/9`,
+        dateStr: `${d}/${month}`,
         startTime: '',
         endTime: '',
         totalHours: 0,
@@ -77,18 +88,32 @@ const generateInitialTimesheet = (employeeId: number, hourlyRate: number): Daily
   return result;
 };
 
+const getStorageKey = (year: number, month: number) => `tang2_salary_timesheets_${year}_${month}`;
+
 export const SalaryManager: React.FC<SalaryManagerProps> = ({
   employees,
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState<number>(9);
-  const [selectedYear] = useState<number>(2026);
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_salary_selected_month');
+    return saved ? Number(saved) : 9;
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_salary_selected_year');
+    return saved ? Number(saved) : 2026;
+  });
   const [activeEmployeeId, setActiveEmployeeId] = useState<number | null>(null);
 
   const summaryTableRef = useRef<HTMLDivElement>(null);
   const detailTableRef = useRef<HTMLDivElement>(null);
 
-  // Employee rates & base salaries state initialized from employees
+  // Employee rates & base salaries state initialized from localStorage or employees
   const [employeeRates, setEmployeeRates] = useState<Record<number, { hourly: number; base: number }>>(() => {
+    try {
+      const saved = localStorage.getItem('tang2_salary_employee_rates');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
     const rates: Record<number, { hourly: number; base: number }> = {};
     employees.forEach((emp) => {
       rates[emp.id] = {
@@ -102,16 +127,81 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
   // Modal for editing employee rate & base salary
   const [editingRateEmp, setEditingRateEmp] = useState<{ id: number; name: string; hourly: number; base: number } | null>(null);
 
-  // Store timesheet per employee: { [employeeId]: DailyTimesheet[] }
-  const [timesheets, setTimesheets] = useState<Record<number, DailyTimesheet[]>>(() => {
+  // Modal for confirming clear data
+  const [showClearModal, setShowClearModal] = useState<boolean>(false);
+
+  // Helper to load timesheets for a given month & year
+  const loadTimesheetsForPeriod = (
+    month: number,
+    year: number,
+    currentEmployees: Employee[],
+    rates: Record<number, { hourly: number; base: number }>
+  ): Record<number, DailyTimesheet[]> => {
+    const daysInMonth = getDaysInMonth(month, year);
+    const key = getStorageKey(year, month);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure every employee has an entry and length matches daysInMonth
+        currentEmployees.forEach((emp) => {
+          if (!parsed[emp.id] || parsed[emp.id].length !== daysInMonth) {
+            const rate = rates[emp.id]?.hourly || emp.hourlyRate || 35000;
+            parsed[emp.id] = createPeriodTimesheet(emp.id, rate, month, year, false);
+          }
+        });
+        return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const init: Record<number, DailyTimesheet[]> = {};
-    employees.forEach((emp) => {
-      const rate = emp.hourlyRate || 35000;
-      init[emp.id] = generateInitialTimesheet(emp.id, rate);
+    currentEmployees.forEach((emp, index) => {
+      const rate = rates[emp.id]?.hourly || emp.hourlyRate || 35000;
+      const withSample = month === 9 && year === 2026 && (emp.fullName.toLowerCase().includes('an') || index === 0);
+      init[emp.id] = createPeriodTimesheet(emp.id, rate, month, year, withSample);
     });
     return init;
+  };
+
+  // Store timesheet per employee: { [employeeId]: DailyTimesheet[] }
+  const [timesheets, setTimesheets] = useState<Record<number, DailyTimesheet[]>>(() => {
+    return loadTimesheetsForPeriod(selectedMonth, selectedYear, employees, employeeRates);
   });
 
+  // Save timesheets state & localStorage helper
+  const saveTimesheets = (updated: Record<number, DailyTimesheet[]>) => {
+    setTimesheets(updated);
+    try {
+      const key = getStorageKey(selectedYear, selectedMonth);
+      localStorage.setItem(key, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // When selectedMonth or selectedYear changes, switch data
+  useEffect(() => {
+    try {
+      localStorage.setItem('tang2_salary_selected_month', String(selectedMonth));
+      localStorage.setItem('tang2_salary_selected_year', String(selectedYear));
+    } catch (e) {
+      console.error(e);
+    }
+    setTimesheets(loadTimesheetsForPeriod(selectedMonth, selectedYear, employees, employeeRates));
+  }, [selectedMonth, selectedYear]);
+
+  // Save rates to localStorage when updated
+  useEffect(() => {
+    try {
+      localStorage.setItem('tang2_salary_employee_rates', JSON.stringify(employeeRates));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [employeeRates]);
+
+  // Sync if employees list changes
   useEffect(() => {
     setEmployeeRates((prev) => {
       const updated = { ...prev };
@@ -127,16 +217,26 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     });
 
     setTimesheets((prev) => {
+      const daysCount = getDaysInMonth(selectedMonth, selectedYear);
+      let changed = false;
       const updated = { ...prev };
       employees.forEach((emp) => {
-        if (!updated[emp.id]) {
+        if (!updated[emp.id] || updated[emp.id].length !== daysCount) {
           const rate = emp.hourlyRate || 35000;
-          updated[emp.id] = generateInitialTimesheet(emp.id, rate);
+          updated[emp.id] = createPeriodTimesheet(emp.id, rate, selectedMonth, selectedYear, false);
+          changed = true;
         }
       });
+      if (changed) {
+        try {
+          localStorage.setItem(getStorageKey(selectedYear, selectedMonth), JSON.stringify(updated));
+        } catch (e) {
+          console.error(e);
+        }
+      }
       return updated;
     });
-  }, [employees]);
+  }, [employees, selectedMonth, selectedYear]);
 
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => {
@@ -174,15 +274,18 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return Math.round(diff * 2) / 2; // làm tròn 0.5h
   };
 
+  const yearsList = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
+  const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
+
   // Active timesheet
   const currentTimesheet = useMemo(() => {
     if (!activeEmployeeId) return [];
     if (!timesheets[activeEmployeeId]) {
       const rate = employeeRates[activeEmployeeId]?.hourly || 40000;
-      return generateInitialTimesheet(activeEmployeeId, rate);
+      return createPeriodTimesheet(activeEmployeeId, rate, selectedMonth, selectedYear, false);
     }
     return timesheets[activeEmployeeId];
-  }, [activeEmployeeId, timesheets, employeeRates]);
+  }, [activeEmployeeId, timesheets, employeeRates, selectedMonth, selectedYear]);
 
   const activeEmployee = employees.find((e) => e.id === activeEmployeeId);
 
@@ -232,25 +335,45 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     const hours = modalIsOff ? 0 : modalHours;
     const pay = modalIsOff ? 0 : hours * rate;
 
-    setTimesheets((prev) => {
-      const list = prev[activeEmployeeId] || [];
-      const updated = list.map((d) =>
-        d.day === editingDay.day
-          ? {
-              ...d,
-              startTime: modalIsOff ? '' : modalStart,
-              endTime: modalIsOff ? '' : modalEnd,
-              totalHours: hours,
-              dailyPay: pay,
-              isOff: modalIsOff,
-            }
-          : d
-      );
-      return { ...prev, [activeEmployeeId]: updated };
-    });
+    const list = timesheets[activeEmployeeId] || [];
+    const updated = list.map((d) =>
+      d.day === editingDay.day
+        ? {
+            ...d,
+            startTime: modalIsOff ? '' : modalStart,
+            endTime: modalIsOff ? '' : modalEnd,
+            totalHours: hours,
+            dailyPay: pay,
+            isOff: modalIsOff,
+          }
+        : d
+    );
+    saveTimesheets({ ...timesheets, [activeEmployeeId]: updated });
 
     setEditingDay(null);
-    showToast(`Đã lưu ngày ${editingDay.day}/9 thành công!`);
+    showToast(`Đã lưu ngày ${editingDay.day}/${selectedMonth} thành công!`);
+  };
+
+  // Clear / Reset Timesheet Data
+  const handleClearData = () => {
+    if (activeEmployeeId) {
+      const rate = employeeRates[activeEmployeeId]?.hourly || 35000;
+      const empty = createPeriodTimesheet(activeEmployeeId, rate, selectedMonth, selectedYear, false);
+      saveTimesheets({
+        ...timesheets,
+        [activeEmployeeId]: empty,
+      });
+      showToast(`Đã xóa sạch giờ làm của ${activeEmployee?.fullName} Tháng ${selectedMonth}/${selectedYear}!`);
+    } else {
+      const updated: Record<number, DailyTimesheet[]> = {};
+      employees.forEach((emp) => {
+        const rate = employeeRates[emp.id]?.hourly || 35000;
+        updated[emp.id] = createPeriodTimesheet(emp.id, rate, selectedMonth, selectedYear, false);
+      });
+      saveTimesheets(updated);
+      showToast(`Đã xóa sạch dữ liệu chấm công toàn bộ nhân viên Tháng ${selectedMonth}/${selectedYear}!`);
+    }
+    setShowClearModal(false);
   };
 
   // Screenshot handlers
@@ -277,27 +400,44 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       )}
 
       {/* Top Bar Navigation for Salary */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-800 to-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-sm">
             <DollarSign className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <span>Hệ Thống Tính Lương Nhà Hàng</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="text-xs font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-lg border border-emerald-300 focus:outline-hidden cursor-pointer"
-              >
-                {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Tháng {i + 1}/{selectedYear}
-                  </option>
-                ))}
-              </select>
-            </h2>
-            <p className="text-xs text-slate-500 font-semibold">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-xl font-black text-slate-800">
+                Tính Lương Nhà Hàng
+              </h2>
+              {/* Period Selectors */}
+              <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-300">
+                <span className="text-xs font-bold text-emerald-900">Kỳ lương:</span>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="text-xs font-bold bg-white text-emerald-900 px-2 py-1 rounded-lg border border-emerald-200 focus:outline-hidden cursor-pointer shadow-2xs"
+                >
+                  {[...Array(12)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Tháng {i + 1}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="text-xs font-bold bg-white text-emerald-900 px-2 py-1 rounded-lg border border-emerald-200 focus:outline-hidden cursor-pointer shadow-2xs"
+                >
+                  {yearsList.map((y) => (
+                    <option key={y} value={y}>
+                      Năm {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
               {activeEmployeeId
                 ? `Đang xem: Bảng chấm công chi tiết của [${activeEmployee?.fullName}]`
                 : 'Bảng tổng hợp tiền lương toàn bộ nhân viên trong tháng'}
@@ -317,16 +457,26 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
             </button>
           ) : null}
 
+          {/* Nút Xóa Dữ Liệu */}
+          <button
+            onClick={() => setShowClearModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs shadow-2xs transition"
+            title={activeEmployeeId ? 'Xóa dữ liệu chấm công nhân viên này về 0' : 'Xóa dữ liệu chấm công toàn bộ nhân viên tháng này về 0'}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>{activeEmployeeId ? 'Xóa Giờ Nhân Viên' : 'Xóa Dữ Liệu Tháng'}</span>
+          </button>
+
           <button
             onClick={() =>
               activeEmployeeId
                 ? handleCopy(detailTableRef)
                 : handleCopy(summaryTableRef)
             }
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition"
           >
             <Copy className="w-4 h-4" />
-            <span>📋 Copy Ảnh Gửi Zalo</span>
+            <span>📋 Copy Ảnh</span>
           </button>
 
           <button
@@ -334,14 +484,14 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
               activeEmployeeId
                 ? handleDownload(
                     detailTableRef,
-                    `Bang_Cham_Cong_${activeEmployee?.fullName}_Thang_${selectedMonth}.png`
+                    `Bang_Cham_Cong_${activeEmployee?.fullName}_Thang_${selectedMonth}_${selectedYear}.png`
                   )
-                : handleDownload(summaryTableRef, `Bang_Luong_Tong_Thang_${selectedMonth}.png`)
+                : handleDownload(summaryTableRef, `Bang_Luong_Tong_Thang_${selectedMonth}_${selectedYear}.png`)
             }
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-xs transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-xs transition"
           >
             <Camera className="w-4 h-4" />
-            <span>📸 Tải Ảnh Ultra HD</span>
+            <span>📸 Tải Ảnh HD</span>
           </button>
         </div>
       </div>
@@ -358,7 +508,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
             {/* Top Sheet Tab "Tiền lương tháng 9 ∨ 🧮" */}
             <div className="flex items-center gap-2 mb-2">
               <div className="bg-[#245839] text-white px-3.5 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
-                <span>Tiền lương tháng {selectedMonth}</span>
+                <span>Tiền lương tháng {selectedMonth}/{selectedYear}</span>
                 <span className="text-[10px] opacity-80">▼</span>
                 <span>🧮</span>
               </div>
@@ -406,7 +556,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     key={emp.id}
                     onClick={() => setActiveEmployeeId(emp.id)}
                     className="hover:bg-emerald-50/50 cursor-pointer transition-colors"
-                    title="Bấm để xem chi tiết chấm công 30 ngày của nhân viên này"
+                    title={`Bấm để xem chi tiết chấm công ${daysInMonth} ngày của nhân viên này`}
                   >
                     {/* Tên */}
                     <td className="border border-gray-500 py-3 px-4 text-center font-bold text-gray-900 bg-white">
@@ -479,7 +629,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 flex items-center justify-between">
             <div>
-              💡 <b>Mẹo quản lý:</b> Nhấp chuột trực tiếp vào hàng của nhân viên bất kỳ để mở <b>Bảng chấm công chi tiết 30 ngày</b> của nhân viên đó.
+              💡 <b>Mẹo quản lý:</b> Nhấp chuột trực tiếp vào hàng của nhân viên bất kỳ để mở <b>Bảng chấm công chi tiết {daysInMonth} ngày</b> của nhân viên đó.
             </div>
             <div className="font-semibold text-emerald-800">Tang2Manager Payroll</div>
           </div>
@@ -501,7 +651,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 <h3 className="text-lg font-black text-emerald-950 flex items-center gap-2">
                   <span>BẢNG CHẤM CÔNG CHI TIẾT — {activeEmployee.fullName.toUpperCase()}</span>
                   <span className="text-xs bg-cyan-100 text-cyan-900 px-2.5 py-0.5 rounded-full font-bold border border-cyan-300">
-                    Tháng {selectedMonth}
+                    Tháng {selectedMonth}/{selectedYear}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 font-semibold">
@@ -812,15 +962,13 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                       },
                     }));
                     // update hourlyRate in existing timesheet
-                    setTimesheets((prev) => {
-                      const list = prev[editingRateEmp.id] || [];
-                      const updated = list.map((d) => ({
-                        ...d,
-                        hourlyRate: editingRateEmp.hourly,
-                        dailyPay: d.isOff ? 0 : d.totalHours * editingRateEmp.hourly,
-                      }));
-                      return { ...prev, [editingRateEmp.id]: updated };
-                    });
+                    const list = timesheets[editingRateEmp.id] || [];
+                    const updated = list.map((d) => ({
+                      ...d,
+                      hourlyRate: editingRateEmp.hourly,
+                      dailyPay: d.isOff ? 0 : d.totalHours * editingRateEmp.hourly,
+                    }));
+                    saveTimesheets({ ...timesheets, [editingRateEmp.id]: updated });
                     setEditingRateEmp(null);
                     showToast(`Đã cập nhật mức lương cho ${editingRateEmp.name}!`);
                   }}
@@ -836,6 +984,73 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                   Đóng
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: XÁC NHẬN XÓA DỮ LIỆU CHẤM CÔNG */}
+      {showClearModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setShowClearModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-rose-600 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-800">
+                  {activeEmployeeId ? 'Xóa Giờ Làm Nhân Viên' : 'Xóa Dữ Liệu Chấm Công Tháng'}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Kỳ lương: Tháng {selectedMonth}/{selectedYear}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl mb-5 text-xs font-medium text-rose-900 leading-relaxed space-y-2">
+              {activeEmployeeId ? (
+                <div>
+                  Bạn có chắc chắn muốn xóa toàn bộ giờ làm & ngày công của nhân viên{' '}
+                  <strong className="font-bold underline">{activeEmployee?.fullName}</strong> trong{' '}
+                  <strong>Tháng {selectedMonth}/{selectedYear}</strong> về 0?
+                  <div className="text-[11px] text-rose-700 mt-1.5 font-semibold">
+                    ✓ Mức lương theo giờ ({(employeeRates[activeEmployeeId]?.hourly || 35000).toLocaleString('vi-VN')} đ/h) vẫn được giữ nguyên.
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  Bạn có chắc chắn muốn xóa toàn bộ giờ làm & ngày công của{' '}
+                  <strong className="font-bold underline">TẤT CẢ NHÂN VIÊN</strong> trong{' '}
+                  <strong>Tháng {selectedMonth}/{selectedYear}</strong> về 0?
+                  <div className="text-[11px] text-rose-700 mt-1.5 font-semibold">
+                    ✓ Thao tác này giúp bạn làm sạch bảng công để bắt đầu nhập tháng mới. Đơn giá lương/giờ của từng nhân viên vẫn được giữ nguyên.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleClearData}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác nhận xóa</span>
+              </button>
             </div>
           </div>
         </div>
