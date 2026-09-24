@@ -461,88 +461,97 @@ export function App() {
         ) : (
           <>
             {/* Top Header & Action Bar */}
-            <header className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              {/* Brand info */}
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 flex items-center justify-center text-white shadow-md">
-                  <Store className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                      TẦNG 2 RESTAURANT
-                    </h1>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      <Sparkles className="w-3 h-3 text-emerald-600" /> Hệ thống xếp lịch
-                    </span>
+            <header className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3.5">
+              {/* Row 1: Brand Info & Week Navigation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                {/* Brand Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 flex items-center justify-center text-white shadow-md shrink-0">
+                    <Store className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                    <Calendar className="w-4 h-4 text-emerald-700" />
-                    <span>{weekLabel}</span>
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                        TẦNG 2 RESTAURANT
+                      </h1>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                        <Sparkles className="w-3 h-3 text-emerald-600" /> Hệ thống xếp lịch
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+                      <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span>{weekLabel}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Week Navigation */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-start sm:self-auto shrink-0 shadow-2xs">
+                  <button
+                    onClick={handlePrevWeek}
+                    className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
+                    title="Tuần trước"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleCurrentWeek}
+                    className="px-3.5 py-1.5 rounded-lg bg-white shadow-xs text-slate-800 text-xs font-bold transition hover:bg-slate-50 cursor-pointer whitespace-nowrap"
+                  >
+                    Tuần Hiện Tại
+                  </button>
+                  <button
+                    onClick={handleNextWeek}
+                    className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
+                    title="Tuần sau"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Week Navigation */}
-              <div className="flex items-center gap-1.5 self-start lg:self-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                <button
-                  onClick={handlePrevWeek}
-                  className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
-                  title="Tuần trước"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleCurrentWeek}
-                  className="px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-800 text-xs font-bold transition hover:bg-slate-50 cursor-pointer"
-                >
-                  Tuần Hiện Tại
-                </button>
-                <button
-                  onClick={handleNextWeek}
-                  className="p-2 rounded-lg hover:bg-white hover:shadow-xs text-slate-700 transition cursor-pointer"
-                  title="Tuần sau"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+              {/* Row 2: Action Toolbar grouped logically */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
+                {/* Group 1: Data Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleClearWeekSchedule}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200/90 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
+                    title="Xóa trắng toàn bộ ca làm trong tuần này để bắt đầu xếp lịch mới"
+                  >
+                    <RotateCcw className="w-4 h-4 text-rose-600" />
+                    <span>🧹 Làm Sạch Lịch Tuần</span>
+                  </button>
 
-              {/* Quick Actions (Save, Copy, Download, Clear) */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={handleClearWeekSchedule}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200/90 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer"
-                  title="Xóa trắng toàn bộ ca làm trong tuần này để bắt đầu xếp lịch mới"
-                >
-                  <RotateCcw className="w-4 h-4 text-rose-600" />
-                  <span>🧹 Làm Sạch Lịch Tuần</span>
-                </button>
+                  <button
+                    onClick={handleSave}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer whitespace-nowrap"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu Lịch (DB)</span>
+                  </button>
+                </div>
 
-                <button
-                  onClick={handleSave}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Lưu Lịch (DB)</span>
-                </button>
+                {/* Group 2: Export & Share Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleCopyImage}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer whitespace-nowrap"
+                    title="Chụp ảnh và copy để dán (Ctrl+V) thẳng vào Zalo"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>📋 Copy Ảnh Gửi Zalo</span>
+                  </button>
 
-                <button
-                  onClick={handleCopyImage}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                  title="Chụp ảnh và copy để dán (Ctrl+V) thẳng vào Zalo"
-                >
-                  <Copy className="w-4 h-4" />
-                  <span>📋 Copy Ảnh Gửi Zalo</span>
-                </button>
-
-                <button
-                  onClick={handleDownloadImage}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                  title="Tải ảnh PNG nét cao về máy"
-                >
-                  <Camera className="w-4 h-4" />
-                  <span>Tải Ảnh PNG</span>
-                </button>
+                  <button
+                    onClick={handleDownloadImage}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer whitespace-nowrap"
+                    title="Tải ảnh PNG nét cao về máy"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Tải Ảnh PNG</span>
+                  </button>
+                </div>
               </div>
             </header>
 
