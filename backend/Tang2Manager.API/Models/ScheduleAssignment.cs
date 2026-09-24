@@ -13,5 +13,6 @@ public class ScheduleAssignment
     public DateTime Date { get; set; }
     public string ShiftText { get; set; } = string.Empty; // Nội dung ca: "10h - Kết ca", "10h - 15h", "Nghỉ",...
     public bool IsOff { get; set; } = false; // Nghỉ phép/off (tô đỏ ô)
+    public string? CustomColor { get; set; }
     public string? Note { get; set; }
 }

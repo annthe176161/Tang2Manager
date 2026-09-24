@@ -40,6 +40,23 @@ export const scheduleApi = {
   },
 };
 
+export const employeeApi = {
+  getAll: async (): Promise<Employee[]> => {
+    const res = await api.get<Employee[]>('/employees');
+    return res.data;
+  },
+  create: async (data: { fullName: string; role: string; hourlyRate?: number; baseSalary?: number; displayOrder?: number }): Promise<Employee> => {
+    const res = await api.post<Employee>('/employees', data);
+    return res.data;
+  },
+  update: async (id: number, data: Employee): Promise<void> => {
+    await api.put(`/employees/${id}`, data);
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/employees/${id}`);
+  }
+};
+
 export const invoiceApi = {
   getCategories: async () => {
     const res = await api.get('/invoices/categories');

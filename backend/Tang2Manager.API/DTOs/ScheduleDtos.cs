@@ -14,9 +14,10 @@ public class SaveAssignmentDto
 {
     public int EmployeeId { get; set; }
     public int DayOfWeek { get; set; }
-    public DateTime Date { get; set; }
+    public string? Date { get; set; }
     public string ShiftText { get; set; } = string.Empty;
     public bool IsOff { get; set; }
+    public string? CustomColor { get; set; }
     public string? Note { get; set; }
 }
 
@@ -45,8 +46,9 @@ public class AssignmentViewDto
     public int EmployeeId { get; set; }
     public string EmployeeName { get; set; } = string.Empty;
     public int DayOfWeek { get; set; }
-    public DateTime Date { get; set; }
+    public string Date { get; set; } = string.Empty;
     public string ShiftText { get; set; } = string.Empty;
     public bool IsOff { get; set; }
+    public string? CustomColor { get; set; }
     public string? Note { get; set; }
 }

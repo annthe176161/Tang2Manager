@@ -78,9 +78,10 @@ public class SchedulesController : ControllerBase
             EmployeeId = a.EmployeeId,
             EmployeeName = a.Employee?.FullName ?? "",
             DayOfWeek = a.DayOfWeek,
-            Date = a.Date,
+            Date = a.Date.ToString("yyyy-MM-dd"),
             ShiftText = a.ShiftText,
             IsOff = a.IsOff,
+            CustomColor = a.CustomColor,
             Note = a.Note
         }).ToList();
 
@@ -131,14 +132,26 @@ public class SchedulesController : ControllerBase
 
         foreach (var item in dto.Assignments)
         {
+            DateTime cellDate;
+            if (!string.IsNullOrWhiteSpace(item.Date) && DateTime.TryParse(item.Date, out var parsedDate))
+            {
+                cellDate = parsedDate.Date;
+            }
+            else
+            {
+                int offset = item.DayOfWeek == 0 ? 6 : item.DayOfWeek - 1;
+                cellDate = monday.AddDays(offset);
+            }
+
             schedule.Assignments.Add(new ScheduleAssignment
             {
                 WeeklyScheduleId = schedule.Id,
                 EmployeeId = item.EmployeeId,
                 DayOfWeek = item.DayOfWeek,
-                Date = item.Date,
-                ShiftText = item.ShiftText,
+                Date = cellDate,
+                ShiftText = item.ShiftText ?? "",
                 IsOff = item.IsOff,
+                CustomColor = item.CustomColor,
                 Note = item.Note
             });
         }

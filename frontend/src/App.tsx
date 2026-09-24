@@ -3,7 +3,7 @@ import { ScheduleTable } from './components/schedule/ScheduleTable';
 import { SalaryManager } from './components/salary/SalaryManager';
 import { InvoiceManager } from './components/invoice/InvoiceManager';
 import type { Employee, ShiftTemplate, Assignment } from './types';
-import { scheduleApi } from './services/api';
+import { scheduleApi, employeeApi } from './services/api';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from './utils/screenshot';
 import { 
   Camera, 
@@ -195,8 +195,8 @@ export function App() {
 
         const dateStr = currentMonday.toISOString().split('T')[0];
         const schedule = await scheduleApi.getScheduleByDate(dateStr);
-        if (schedule && schedule.assignments.length > 0) {
-          setAssignments(schedule.assignments);
+        if (schedule) {
+          setAssignments(schedule.assignments || []);
         }
       } catch (err) {
         console.log('Using local fallback state:', err);
@@ -246,39 +246,58 @@ export function App() {
     showToast(`Đã áp dụng ca làm cho ${days.length} ngày!`);
   };
 
-  // Add new employee
-  const handleAddEmployee = (name: string, role: string) => {
-    const newId = employees.length > 0 ? Math.max(...employees.map((e) => e.id)) + 1 : 1;
-    const newEmp: Employee = {
-      id: newId,
-      fullName: name,
-      role: role || 'Phục vụ',
-      isActive: true,
-      displayOrder: newId,
-    };
-    setEmployees((prev) => [...prev, newEmp]);
-    showToast(`Đã thêm nhân viên ${name} thành công!`);
+  // Add new employee (persist to SQL Server)
+  const handleAddEmployee = async (name: string, role: string) => {
+    try {
+      const created = await employeeApi.create({
+        fullName: name,
+        role: role || 'Phục vụ',
+        hourlyRate: 35000,
+        baseSalary: 0,
+        displayOrder: employees.length + 1
+      });
+      setEmployees((prev) => [...prev, created]);
+      showToast(`Đã lưu nhân viên "${name}" vào cơ sở dữ liệu SQL Server!`);
+    } catch (err) {
+      console.error(err);
+      const newId = employees.length > 0 ? Math.max(...employees.map((e) => e.id)) + 1 : 1;
+      const newEmp: Employee = {
+        id: newId,
+        fullName: name,
+        role: role || 'Phục vụ',
+        isActive: true,
+        displayOrder: newId,
+      };
+      setEmployees((prev) => [...prev, newEmp]);
+      showToast(`Đã thêm nhân viên ${name} thành công!`);
+    }
   };
 
-  // Delete employee
-  const handleDeleteEmployee = (id: number) => {
+  // Delete employee (persist soft-delete to SQL Server)
+  const handleDeleteEmployee = async (id: number) => {
+    try {
+      await employeeApi.delete(id);
+    } catch (err) {
+      console.error(err);
+    }
     setEmployees((prev) => prev.filter((e) => e.id !== id));
     setAssignments((prev) => prev.filter((a) => a.employeeId !== id));
-    showToast('Đã xóa nhân viên khỏi bảng lịch.');
+    showToast('Đã xóa nhân viên khỏi hệ thống!');
   };
 
-  // Toggle role between Nhân viên and Bếp
-  const handleToggleEmployeeRole = (id: number) => {
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id === id) {
-          const nextRole = (emp.role || '').toLowerCase().includes('bếp') ? 'Nhân viên' : 'Bếp';
-          showToast(`${emp.fullName}: Đã đổi sang bộ phận ${nextRole}`);
-          return { ...emp, role: nextRole };
-        }
-        return emp;
-      })
-    );
+  // Toggle role between Nhân viên and Bếp (persist to SQL Server)
+  const handleToggleEmployeeRole = async (id: number) => {
+    const emp = employees.find((e) => e.id === id);
+    if (!emp) return;
+    const nextRole = (emp.role || '').toLowerCase().includes('bếp') ? 'Nhân viên' : 'Bếp';
+    const updatedEmp = { ...emp, role: nextRole };
+    setEmployees((prev) => prev.map((e) => (e.id === id ? updatedEmp : e)));
+    showToast(`${emp.fullName}: Đã đổi sang vai trò ${nextRole}`);
+    try {
+      await employeeApi.update(id, updatedEmp);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handlePrevWeek = () => {
@@ -326,9 +345,10 @@ export function App() {
         weekStartDate: dateStr,
         assignments: assignments,
       });
-      showToast('Đã lưu lịch làm việc thành công lên SQL Server!');
-    } catch {
-      showToast('Đã lưu lịch vào bộ nhớ tạm trình duyệt!');
+      showToast('Đã lưu toàn bộ lịch làm tuần này vào cơ sở dữ liệu SQL Server vĩnh viễn!');
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi khi lưu vào SQL Server! Vui lòng thử lại.', 'error');
     }
   };
 
