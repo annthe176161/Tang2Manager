@@ -85,6 +85,15 @@ export const InvoiceManager: React.FC = () => {
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
 
+  // Modal Thêm Mục Hóa Đơn Mới
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
+  const [newCatName, setNewCatName] = useState<string>('');
+  const [newCatType, setNewCatType] = useState<'Daily' | 'Supplier'>('Daily');
+  const [newCatFixedAmount, setNewCatFixedAmount] = useState<number>(0);
+
+  // Modal Xóa / Làm Sạch Dữ Liệu
+  const [showClearModal, setShowClearModal] = useState<boolean>(false);
+
   useEffect(() => {
     localStorage.setItem('tang2_invoice_selected_month', String(selectedMonth));
   }, [selectedMonth]);
@@ -408,6 +417,93 @@ export const InvoiceManager: React.FC = () => {
     }
   };
 
+  // Create new invoice category
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) {
+      alert('Vui lòng nhập tên mục hóa đơn!');
+      return;
+    }
+
+    try {
+      const created = await invoiceApi.createCategory({
+        name: newCatName.trim(),
+        categoryType: newCatType,
+        fixedAmount: Number(newCatFixedAmount) || 0,
+      });
+
+      const freshCats = await invoiceApi.getCategories();
+      if (freshCats && freshCats.length > 0) {
+        setCategories(freshCats);
+      } else if (created) {
+        setCategories((prev) => [...prev, created]);
+      }
+
+      showToast(`💾 Đã thêm mục hóa đơn [${newCatName.trim()}] vào Database SQL Server!`);
+      setShowAddCategoryModal(false);
+      setNewCatName('');
+      setNewCatFixedAmount(0);
+    } catch (err) {
+      console.error('Lỗi khi thêm hạng mục:', err);
+      // Fallback local update
+      const fallbackCat: InvoiceCategory = {
+        id: Date.now(),
+        name: newCatName.trim(),
+        categoryType: newCatType,
+        isPaid: false,
+        displayOrder: categories.length + 1,
+        fixedAmount: Number(newCatFixedAmount) || 0,
+      };
+      setCategories((prev) => [...prev, fallbackCat]);
+      showToast(`Đã thêm mục [${newCatName.trim()}]!`);
+      setShowAddCategoryModal(false);
+      setNewCatName('');
+      setNewCatFixedAmount(0);
+    }
+  };
+
+  // Delete an invoice category from DB
+  const handleDeleteCategory = async (catId: number, catName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa mục [${catName}] cùng toàn bộ hóa đơn của mục này khỏi Database SQL Server?`)) return;
+
+    try {
+      await invoiceApi.deleteCategory(catId);
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+      setCategoryItems((prev) => {
+        const copy = { ...prev };
+        delete copy[catId];
+        return copy;
+      });
+      showToast(`🗑️ Đã xóa mục [${catName}] khỏi Database SQL Server!`);
+    } catch (err) {
+      console.error('Lỗi khi xóa mục hóa đơn:', err);
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+      showToast(`Đã xóa mục [${catName}]!`);
+    }
+  };
+
+  // Clear / Làm sạch tất cả dữ liệu hóa đơn trong DB
+  const handleClearData = async () => {
+    try {
+      await invoiceApi.clearInvoiceData(activeCategoryId || undefined);
+      if (activeCategoryId) {
+        setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: [] }));
+        setCategories((prev) =>
+          prev.map((c) => (c.id === activeCategoryId ? { ...c, fixedAmount: 0, isPaid: false } : c))
+        );
+        showToast(`🗑️ Đã làm sạch toàn bộ hóa đơn của [${activeCategory?.name}] trong Database SQL Server!`);
+      } else {
+        setCategoryItems({});
+        setCategories((prev) => prev.map((c) => ({ ...c, fixedAmount: 0, isPaid: false })));
+        showToast('🗑️ Đã làm sạch toàn bộ dữ liệu hóa đơn của tất cả các mục trong Database SQL Server!');
+      }
+    } catch (err) {
+      console.error('Lỗi khi làm sạch dữ liệu hóa đơn:', err);
+      showToast('⚠️ Không thể kết nối Database, vui lòng thử lại.');
+    }
+    setShowClearModal(false);
+  };
+
   // Export Excel handler for boss
   const handleExportExcel = () => {
     exportInvoiceToExcel(
@@ -533,6 +629,18 @@ export const InvoiceManager: React.FC = () => {
 
           {/* Action Buttons: Unified, Clean, Professional */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Thêm mục mới nếu đang ở Bảng Tổng */}
+            {!activeCategory && (
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                title="Thêm một hạng mục hóa đơn hoặc nhà cung cấp mới vào bảng tổng hợp"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm Mục Mới</span>
+              </button>
+            )}
+
             {/* Thêm mặt hàng nếu đang ở chi tiết */}
             {activeCategory && (
               <button
@@ -594,6 +702,16 @@ export const InvoiceManager: React.FC = () => {
             >
               <Camera className="w-3.5 h-3.5 text-slate-600" />
               <span>Tải Ảnh HD</span>
+            </button>
+
+            {/* Xóa / Làm sạch dữ liệu */}
+            <button
+              onClick={() => setShowClearModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition cursor-pointer"
+              title={activeCategory ? 'Xóa toàn bộ mặt hàng của mục này' : 'Làm sạch toàn bộ hóa đơn của tất cả các mục'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{activeCategory ? 'Xóa Mục Này' : 'Xóa Dữ Liệu'}</span>
             </button>
           </div>
         </div>
@@ -701,8 +819,18 @@ export const InvoiceManager: React.FC = () => {
                       </td>
 
                       {/* 품목 (Hạng mục) */}
-                      <td className="border border-gray-500 py-2.5 px-4 text-center font-bold text-gray-900 bg-white">
-                        <span>{cat.name}</span>
+                      <td className="border border-gray-500 py-2.5 px-4 text-center font-bold text-gray-900 bg-white group">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="flex-1 text-center">{cat.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteCategory(cat.id, cat.name, e)}
+                            className="p-1 text-slate-300 hover:text-rose-600 rounded opacity-0 group-hover:opacity-100 transition print:hidden screenshot-exclude shrink-0"
+                            title={`Xóa mục [${cat.name}] khỏi danh sách`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
 
                       {/* 금액 (Số tiền) */}
@@ -1282,6 +1410,179 @@ export const InvoiceManager: React.FC = () => {
                   Đóng
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: THÊM MỤC HÓA ĐƠN MỚI */}
+      {showAddCategoryModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setShowAddCategoryModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-black text-slate-800 mb-4 flex items-center justify-between border-b pb-3">
+              <span className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                  ➕
+                </span>
+                <span>Thêm Mục Hóa Đơn / NCC Mới</span>
+              </span>
+              <button
+                onClick={() => setShowAddCategoryModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1"
+              >
+                ✕
+              </button>
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Tên mục hóa đơn / Nhà cung cấp: <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Hải sản - Tôm mực, Than nướng, Gia vị..."
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 font-medium focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Phân loại hình thức quản lý:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewCatType('Daily')}
+                    className={`p-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
+                      newCatType === 'Daily'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-2xs'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <div className="font-extrabold mb-0.5">🛒 Chi tiêu hàng ngày</div>
+                    <div className="text-[11px] font-normal text-slate-500">Rau củ, gas, đá viên, lau sàn...</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewCatType('Supplier')}
+                    className={`p-3 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
+                      newCatType === 'Supplier'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-2xs'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <div className="font-extrabold mb-0.5">🏢 Nhà phân phối (NCC)</div>
+                    <div className="text-[11px] font-normal text-slate-500">Keyfood, An Phát, Bia rượu...</div>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Số tiền định mức ban đầu (nếu không theo dõi chi tiết mặt hàng):
+                </label>
+                <input
+                  type="number"
+                  step="10000"
+                  placeholder="0"
+                  value={newCatFixedAmount || ''}
+                  onChange={(e) => setNewCatFixedAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  💡 Nếu mục này có hóa đơn chi tiết từng ngày, bạn để số tiền 0 và bấm vào mục để thêm mặt hàng sau.
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-sm shadow-md transition cursor-pointer"
+                >
+                  💾 Lưu Vào Database SQL Server
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: XÁC NHẬN XÓA / LÀM SẠCH DỮ LIỆU HÓA ĐƠN */}
+      {showClearModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setShowClearModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  {activeCategory ? `Xóa Hóa Đơn [${activeCategory.name}]` : 'Làm Sạch Dữ Liệu Hóa Đơn'}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">Hành động này sẽ cập nhật vào Database SQL Server</p>
+              </div>
+            </div>
+
+            <div className="my-4 p-3.5 bg-rose-50/80 rounded-xl border border-rose-200 text-xs text-rose-900 leading-relaxed font-medium">
+              {activeCategory ? (
+                <>
+                  Bạn có chắc chắn muốn xóa <b>toàn bộ {currentItems.length} mặt hàng</b> trong hóa đơn <b>[{activeCategory.name}]</b>?
+                  <br />
+                  <span className="text-[11px] text-rose-700 mt-1 block">
+                    ⚠️ Dữ liệu mặt hàng sẽ bị xóa vĩnh viễn khỏi Database và tổng chi phí mục này sẽ về 0.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Bạn có chắc chắn muốn <b>làm sạch toàn bộ hóa đơn</b> của tất cả các hạng mục?
+                  <br />
+                  <span className="text-[11px] text-rose-700 mt-1 block">
+                    ⚠️ Toàn bộ các mặt hàng đã nhập trong Database SQL Server sẽ được xóa sạch và số tiền đặt lại về 0 để bạn bắt đầu kỳ mới.
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={handleClearData}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm shadow-md transition cursor-pointer"
+              >
+                Xác Nhận Xóa
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Hủy Bỏ
+              </button>
             </div>
           </div>
         </div>

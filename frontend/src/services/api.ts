@@ -93,8 +93,25 @@ export const invoiceApi = {
     return res.data;
   },
 
+  createCategory: async (category: any) => {
+    const res = await api.post('/invoices/categories', category);
+    return res.data;
+  },
+
+  deleteCategory: async (id: number) => {
+    const res = await api.delete(`/invoices/categories/${id}`);
+    return res.data;
+  },
+
   deleteItem: async (id: number) => {
     const res = await api.delete(`/invoices/items/${id}`);
+    return res.data;
+  },
+
+  clearInvoiceData: async (categoryId?: number) => {
+    const res = await api.delete('/invoices/clear', {
+      params: categoryId ? { categoryId } : {},
+    });
     return res.data;
   },
 };

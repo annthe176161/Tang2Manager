@@ -65,6 +65,38 @@ public class InvoicesController : ControllerBase
         return Ok(cat);
     }
 
+    [HttpPost("categories")]
+    public async Task<ActionResult<InvoiceCategory>> CreateCategory([FromBody] InvoiceCategory category)
+    {
+        category.Id = 0; // SQL Server identity
+        if (string.IsNullOrWhiteSpace(category.Name))
+        {
+            return BadRequest("Tên hạng mục hóa đơn không được để trống.");
+        }
+        if (string.IsNullOrWhiteSpace(category.CategoryType))
+        {
+            category.CategoryType = "Daily";
+        }
+        var maxOrder = await _context.InvoiceCategories.MaxAsync(c => (int?)c.DisplayOrder) ?? 0;
+        category.DisplayOrder = maxOrder + 1;
+        category.IsPaid = false;
+
+        _context.InvoiceCategories.Add(category);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetCategories), new { id = category.Id }, category);
+    }
+
+    [HttpDelete("categories/{id}")]
+    public async Task<IActionResult> DeleteCategory(int id)
+    {
+        var cat = await _context.InvoiceCategories.Include(c => c.Items).FirstOrDefaultAsync(c => c.Id == id);
+        if (cat == null) return NotFound();
+
+        _context.InvoiceCategories.Remove(cat);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("items/{categoryId}")]
     public async Task<ActionResult<IEnumerable<InvoiceItem>>> GetItemsByCategory(int categoryId)
     {
@@ -169,5 +201,38 @@ public class InvoicesController : ControllerBase
         _context.InvoiceItems.Remove(item);
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpDelete("clear")]
+    public async Task<IActionResult> ClearInvoiceData([FromQuery] int? categoryId)
+    {
+        if (categoryId.HasValue)
+        {
+            var items = await _context.InvoiceItems.Where(i => i.CategoryId == categoryId.Value).ToListAsync();
+            _context.InvoiceItems.RemoveRange(items);
+
+            var cat = await _context.InvoiceCategories.FindAsync(categoryId.Value);
+            if (cat != null)
+            {
+                cat.FixedAmount = 0;
+                cat.IsPaid = false;
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa sạch {items.Count} mặt hàng trong hạng mục ID {categoryId.Value}!" });
+        }
+        else
+        {
+            var allItems = await _context.InvoiceItems.ToListAsync();
+            _context.InvoiceItems.RemoveRange(allItems);
+
+            var allCats = await _context.InvoiceCategories.ToListAsync();
+            foreach (var c in allCats)
+            {
+                c.FixedAmount = 0;
+                c.IsPaid = false;
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa sạch {allItems.Count} mặt hàng và làm mới toàn bộ hóa đơn trong Database!" });
+        }
     }
 }
