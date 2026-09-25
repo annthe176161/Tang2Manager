@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { InvoiceCategory, InvoiceItem } from '../../types';
 import { invoiceApi } from '../../services/api';
-import { downloadScheduleImage, copyScheduleImageToClipboard } from '../../utils/screenshot';
+import { downloadScheduleImage, copyScheduleImageToClipboard, captureElementToBlob } from '../../utils/screenshot';
 import { exportInvoiceToExcel } from '../../utils/exportInvoiceExcel';
+import JSZip from 'jszip';
 import {
   Camera,
   Copy,
@@ -15,6 +16,8 @@ import {
   Sparkles,
   FileSpreadsheet,
   Database,
+  Archive,
+  Loader2,
 } from 'lucide-react';
 import { InvoiceScannerModal } from './InvoiceScannerModal';
 
@@ -58,6 +61,10 @@ export const InvoiceManager: React.FC = () => {
 
   // Modal Xóa / Làm Sạch Dữ Liệu
   const [showClearModal, setShowClearModal] = useState<boolean>(false);
+
+  // Xuất trọn bộ ảnh (.ZIP)
+  const [isExportingZip, setIsExportingZip] = useState<boolean>(false);
+  const [zipProgress, setZipProgress] = useState<{ current: number; total: number; name: string } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('tang2_invoice_selected_month', String(selectedMonth));
@@ -544,6 +551,102 @@ export const InvoiceManager: React.FC = () => {
     showToast('📋 Đã copy ảnh! Khi dán vào Zalo hãy tích chọn [HD] để ảnh nét 100%.');
   };
 
+  // Tải toàn bộ ảnh hóa đơn (Bảng tổng hợp + Chi tiết từng mục) đóng gói vào 1 file ZIP
+  const handleExportAllInvoiceImagesZip = async () => {
+    if (isExportingZip) return;
+    setIsExportingZip(true);
+    const totalSteps = categories.length + 1;
+    setZipProgress({ current: 0, total: totalSteps, name: 'Bắt đầu nén ảnh hóa đơn...' });
+
+    const originalCategoryId = activeCategoryId;
+
+    try {
+      // 1. Tải trước toàn bộ dữ liệu mặt hàng của các mục chưa có trong state để tránh bảng trống
+      setZipProgress({ current: 0, total: totalSteps, name: 'Đang chuẩn bị dữ liệu các mục...' });
+      const updatedItems = { ...categoryItems };
+      for (const cat of categories) {
+        if (!updatedItems[cat.id]) {
+          try {
+            const items = await invoiceApi.getItemsByCategory(cat.id, selectedMonth, selectedYear);
+            updatedItems[cat.id] = items || [];
+          } catch {
+            updatedItems[cat.id] = [];
+          }
+        }
+      }
+      setCategoryItems(updatedItems);
+
+      const zip = new JSZip();
+
+      // 2. Chụp Bảng Tổng Hợp Chi Phí Hóa Đơn & Nhập Hàng
+      setZipProgress({ current: 1, total: totalSteps, name: '📸 Bảng Tổng Hợp Chi Phí Hóa Đơn' });
+      setActiveCategoryId(null);
+      await new Promise((r) => setTimeout(r, 250));
+
+      if (summaryTableRef.current) {
+        const summaryBlob = await captureElementToBlob(summaryTableRef.current, 2.5);
+        if (summaryBlob) {
+          zip.file(`00_Bang_Tong_Hop_Chi_Phi_Hoa_Don_Thang_${selectedMonth}_${selectedYear}.png`, summaryBlob);
+        }
+      }
+
+      // 3. Lần lượt chụp bảng chi tiết của từng mục hóa đơn
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        const idxStr = String(i + 1).padStart(2, '0');
+        setZipProgress({
+          current: i + 2,
+          total: totalSteps,
+          name: `📸 Hóa đơn [${cat.name}] (${i + 1}/${categories.length})`,
+        });
+
+        setActiveCategoryId(cat.id);
+        await new Promise((r) => setTimeout(r, 250));
+
+        if (detailTableRef.current) {
+          const detailBlob = await captureElementToBlob(detailTableRef.current, 2.5);
+          if (detailBlob) {
+            const safeName = cat.name.replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            zip.file(`${idxStr}_Hoa_Don_${safeName}_Thang_${selectedMonth}_${selectedYear}.png`, detailBlob);
+          }
+        }
+      }
+
+      // 4. Nén file ZIP
+      setZipProgress({
+        current: totalSteps,
+        total: totalSteps,
+        name: '📦 Đang nén các ảnh vào file ZIP...',
+      });
+
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+
+      // 5. Kích hoạt tải về máy
+      const url = URL.createObjectURL(zipContent);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Tron_Bo_Hoa_Don_Nhap_Hang_Tang2_Thang_${selectedMonth}_${selectedYear}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch {}
+      }, 3000);
+
+      showToast('📦 Đã tải trọn bộ ảnh hóa đơn (.ZIP) thành công!');
+    } catch (err) {
+      console.error('Lỗi khi nén file ZIP hóa đơn:', err);
+      showToast('⚠️ Có lỗi khi tạo file ZIP, vui lòng thử lại.');
+    } finally {
+      setActiveCategoryId(originalCategoryId);
+      setIsExportingZip(false);
+      setZipProgress(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -610,56 +713,54 @@ export const InvoiceManager: React.FC = () => {
         </div>
 
         {/* Tier 2: Action Controls & Quick Summary */}
-        <div className="px-4 py-3 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-2.5 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white border-t border-slate-100">
+          <div className="flex items-center gap-2 shrink-0">
             {activeCategory ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setActiveCategoryId(null)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200 shadow-2xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200 shadow-2xs cursor-pointer whitespace-nowrap"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>← Bảng Chi Phí Tổng</span>
+                  <span>← Bảng Tổng</span>
                 </button>
-                <div className="hidden sm:flex items-center gap-2 text-xs">
-                  <span className="text-slate-500 font-medium">Tổng hóa đơn:</span>
-                  <span className="font-extrabold text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
-                    {activeCategoryTotal.toLocaleString('vi-VN')} đ
-                  </span>
+                <div className="flex items-center gap-1.5 text-xs bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 text-blue-900 font-bold whitespace-nowrap">
+                  <span className="text-blue-700 font-medium">Tổng hóa đơn:</span>
+                  <span className="text-sm font-black text-blue-950">{activeCategoryTotal.toLocaleString('vi-VN')} đ</span>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2.5 text-xs text-slate-600 font-medium flex-wrap">
-                <span className="font-bold text-slate-700">Tổng chi phí:</span>
-                <span className="text-sm font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                  {grandTotal.toLocaleString('vi-VN')} đ
-                </span>
-                <span className="text-[11px] text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                  Đã thanh toán: {categories.filter((c) => c.isPaid).length}/{categories.length}
-                </span>
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <div className="flex items-center gap-1.5 text-xs bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 text-emerald-900 font-bold">
+                  <span className="text-emerald-700 font-semibold">Tổng chi phí:</span>
+                  <span className="text-sm font-black text-emerald-950">{grandTotal.toLocaleString('vi-VN')} đ</span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-semibold">
+                  <span className="text-slate-500">Đã thanh toán:</span>
+                  <span className="font-bold text-slate-800">
+                    {categories.filter((c) => c.isPaid).length}/{categories.length}
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
           {/* Action Buttons: Unified, Clean, Professional */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Thêm mục mới nếu đang ở Bảng Tổng */}
-            {!activeCategory && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Nhóm 1: Thao tác dữ liệu */}
+            {!activeCategory ? (
               <button
                 onClick={() => setShowAddCategoryModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer whitespace-nowrap"
                 title="Thêm một hạng mục hóa đơn hoặc nhà cung cấp mới vào bảng tổng hợp"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Thêm Mục Mới</span>
               </button>
-            )}
-
-            {/* Thêm mặt hàng nếu đang ở chi tiết */}
-            {activeCategory && (
+            ) : (
               <button
                 onClick={handleOpenAddModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer whitespace-nowrap"
                 title="Thêm mặt hàng mới vào hóa đơn này"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -670,38 +771,39 @@ export const InvoiceManager: React.FC = () => {
             {/* Quét Hóa Đơn AI */}
             <button
               onClick={() => setIsScannerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer whitespace-nowrap"
               title="Dùng Camera hoặc Tải ảnh hóa đơn để AI tự động nhận diện và điền vào bảng"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Quét Hóa Đơn (AI)</span>
             </button>
 
-            {/* Xuất Excel gửi sếp */}
+            {/* Ngăn cách trực quan */}
+            <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block"></div>
+
+            {/* Nhóm 2: Xuất báo cáo & chia sẻ */}
             <button
               onClick={handleExportExcel}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 font-bold rounded-xl text-xs border border-slate-200 hover:border-emerald-300 shadow-2xs transition cursor-pointer whitespace-nowrap"
               title="Xuất bảng tổng hợp và chi tiết mặt hàng ra file Excel (.xlsx) gửi sếp"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
-              <span>Xuất Excel gửi sếp</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Xuất Excel</span>
             </button>
 
-            {/* Copy ảnh Zalo */}
             <button
               onClick={() =>
                 activeCategory
                   ? handleCopy(detailTableRef)
                   : handleCopy(summaryTableRef)
               }
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold rounded-xl text-xs border border-slate-200 hover:border-blue-300 shadow-2xs transition cursor-pointer whitespace-nowrap"
               title="Copy ảnh hóa đơn độ nét cao để gửi nhanh qua Zalo"
             >
               <Copy className="w-3.5 h-3.5 text-blue-600" />
               <span>Copy Ảnh</span>
             </button>
 
-            {/* Tải ảnh Ultra HD */}
             <button
               onClick={() =>
                 activeCategory
@@ -711,21 +813,38 @@ export const InvoiceManager: React.FC = () => {
                     )
                   : handleDownload(summaryTableRef, `Tong_Hop_Hoa_Don_Thang_${selectedMonth}_${selectedYear}.png`)
               }
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition cursor-pointer whitespace-nowrap"
               title="Tải ảnh hóa đơn độ phân giải cao Ultra HD về máy"
             >
               <Camera className="w-3.5 h-3.5 text-slate-600" />
               <span>Tải Ảnh HD</span>
             </button>
 
-            {/* Xóa / Làm sạch dữ liệu */}
+            <button
+              onClick={handleExportAllInvoiceImagesZip}
+              disabled={isExportingZip}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              title="Tải trọn bộ ảnh bảng tổng hợp hóa đơn & chi tiết tất cả các mục nén trong 1 file ZIP gửi sếp"
+            >
+              {isExportingZip ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Archive className="w-3.5 h-3.5 text-amber-100" />
+              )}
+              <span>{isExportingZip ? 'Đang Nén ZIP...' : 'Tải File (.ZIP)'}</span>
+            </button>
+
+            {/* Ngăn cách trực quan */}
+            <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block"></div>
+
+            {/* Nhóm 3: Xóa / Làm sạch dữ liệu */}
             <button
               onClick={() => setShowClearModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-semibold rounded-xl text-xs border border-slate-200 hover:border-rose-200 transition cursor-pointer whitespace-nowrap"
               title={activeCategory ? 'Xóa toàn bộ mặt hàng của mục này' : 'Làm sạch toàn bộ hóa đơn của tất cả các mục'}
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-              <span>{activeCategory ? 'Xóa Mục Này' : 'Xóa Dữ Liệu'}</span>
+              <span>{activeCategory ? 'Xóa Mục' : 'Xóa Dữ Liệu'}</span>
             </button>
           </div>
         </div>
@@ -736,86 +855,88 @@ export const InvoiceManager: React.FC = () => {
       {/* ========================================================================= */}
       {!activeCategoryId && (
         <div className="space-y-4">
-          <div
-            ref={summaryTableRef}
-            className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800 max-w-4xl mx-auto"
-          >
-            {/* Header cho in ấn & chụp ảnh gửi sếp */}
-            <div className="mb-4 pb-3 border-b-2 border-emerald-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
-                  T2
-                </div>
-                <div>
-                  <div className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-                    NHÀ HÀNG TẦNG 2 • QUẢN LÝ TÀI CHÍNH
+          <div className="w-full overflow-x-auto pb-4">
+            <div
+              ref={summaryTableRef}
+              className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-300 select-none text-slate-800 mx-auto"
+              style={{ width: '1150px', minWidth: '1150px' }}
+            >
+              {/* Header cho in ấn & chụp ảnh gửi sếp */}
+              <div className="mb-4 pb-3 border-b-2 border-emerald-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+                    T2
                   </div>
-                  <h1 className="text-lg font-black text-slate-900 leading-tight">
-                    BẢNG TỔNG HỢP CHI PHÍ HÓA ĐƠN & NHẬP HÀNG
-                  </h1>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear} • Ngày xuất: {new Date().toLocaleDateString('vi-VN')}
-                  </p>
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                      NHÀ HÀNG TẦNG 2 • QUẢN LÝ TÀI CHÍNH
+                    </div>
+                    <h1 className="text-lg font-black text-slate-900 leading-tight">
+                      BẢNG TỔNG HỢP CHI PHÍ HÓA ĐƠN & NHẬP HÀNG
+                    </h1>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear} • Ngày xuất: {new Date().toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200">
+                  <div className="text-[11px] text-slate-500 font-semibold">Tình trạng thanh toán</div>
+                  <div className="text-sm font-black text-emerald-700">
+                    {categories.filter((c) => c.isPaid).length}/{categories.length} Hạng mục đã duyệt chi
+                  </div>
+                  <div className="text-xs font-bold text-slate-700">
+                    Tổng chi phí: <span className="text-emerald-800 font-black">{grandTotal.toLocaleString('vi-VN')} đ</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200">
-                <div className="text-[11px] text-slate-500 font-semibold">Tình trạng thanh toán</div>
-                <div className="text-sm font-black text-emerald-700">
-                  {categories.filter((c) => c.isPaid).length}/{categories.length} Hạng mục đã duyệt chi
-                </div>
-                <div className="text-xs font-bold text-slate-700">
-                  Tổng chi phí: <span className="text-emerald-800 font-black">{grandTotal.toLocaleString('vi-VN')} đ</span>
+
+              {/* Top Sheet Tab "T9_2026 ∨ 🧮" matching Image 1 */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                  <span>T{selectedMonth}_{selectedYear}</span>
+                  <span className="text-[10px] opacity-80">▼</span>
+                  <span>🧮</span>
                 </div>
               </div>
-            </div>
 
-            {/* Top Sheet Tab "T9_2026 ∨ 🧮" matching Image 1 */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
-                <span>T{selectedMonth}_{selectedYear}</span>
-                <span className="text-[10px] opacity-80">▼</span>
-                <span>🧮</span>
-              </div>
-            </div>
+              {/* Main Table Matching Image 1 */}
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#245839] text-white font-extrabold select-none">
+                    {/* 순번 (STT) */}
+                    <th className="border border-gray-500 py-3 px-3 text-center w-16">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>순번</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
 
-            {/* Main Table Matching Image 1 */}
-            <table className="w-full border-collapse border-2 border-gray-600 text-sm">
-              <thead>
-                <tr className="bg-[#245839] text-white font-extrabold select-none">
-                  {/* 순번 (STT) */}
-                  <th className="border border-gray-500 py-3 px-3 text-center w-16">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>순번</span>
-                      <span className="text-[10px] opacity-75">▼</span>
-                    </div>
-                  </th>
+                    {/* 품목 (Hạng mục) */}
+                    <th className="border border-gray-500 py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>품목</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
 
-                  {/* 품목 (Hạng mục) */}
-                  <th className="border border-gray-500 py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>품목</span>
-                      <span className="text-[10px] opacity-75">▼</span>
-                    </div>
-                  </th>
+                    {/* 금액 (Số tiền) */}
+                    <th className="border border-gray-500 py-3 px-4 text-center w-60">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>금액</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
 
-                  {/* 금액 (Số tiền) */}
-                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[130px]">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>금액</span>
-                      <span className="text-[10px] opacity-75">▼</span>
-                    </div>
-                  </th>
-
-                  {/* 결제 (Thanh toán) */}
-                  <th className="border border-gray-500 py-3 px-3 text-center w-20">
-                    <div className="flex items-center justify-center gap-1">
-                      <span className="text-xs">☑</span>
-                      <span>결제</span>
-                      <span className="text-[10px] opacity-75">▼</span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
+                    {/* 결제 (Thanh toán) */}
+                    <th className="border border-gray-500 py-3 px-3 text-center w-36 min-w-[120px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-xs">☑</span>
+                        <span>결제</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
               <tbody>
                 {categories.map((cat, idx) => {
                   const total = getCategoryTotal(cat);
@@ -870,10 +991,10 @@ export const InvoiceManager: React.FC = () => {
 
                       {/* 결제 (Checkbox thanh toán - Khớp ô vuông checkbox trong ảnh 1) */}
                       <td
-                        className="border border-gray-500 py-2.5 px-3 text-center bg-white"
+                        className="border border-gray-500 py-2.5 px-3 text-center bg-white w-36 min-w-[120px]"
                         onClick={(e) => handleTogglePaid(cat.id, e)}
                       >
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1.5">
                           {isChecked ? (
                             <div className="w-5 h-5 bg-emerald-700 text-white rounded-sm flex items-center justify-center text-xs font-black shadow-xs">
                               ✓
@@ -881,6 +1002,9 @@ export const InvoiceManager: React.FC = () => {
                           ) : (
                             <div className="w-5 h-5 border-2 border-gray-700 rounded-sm hover:border-emerald-600 bg-white transition"></div>
                           )}
+                          <span className={`text-[11px] font-bold ${isChecked ? 'text-emerald-700' : 'text-slate-400'}`}>
+                            {isChecked ? 'Đã chi' : 'Chưa'}
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -903,7 +1027,9 @@ export const InvoiceManager: React.FC = () => {
                   </td>
 
                   {/* Cột 결제 cuối */}
-                  <td className="border border-gray-500 py-3 px-3 text-center bg-white"></td>
+                  <td className="border border-gray-500 py-3 px-3 text-center bg-white font-bold text-xs text-slate-600">
+                    {categories.filter((c) => c.isPaid).length}/{categories.length} Đã chi
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -927,8 +1053,9 @@ export const InvoiceManager: React.FC = () => {
               </div>
             </div>
           </div>
+          </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 flex items-center justify-between max-w-4xl mx-auto">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 flex items-center justify-between max-w-5xl mx-auto">
             <div>
               💡 <b>Mẹo quản lý:</b> Nhấp chuột trực tiếp vào bất kỳ hạng mục nào để mở <b>Bảng chi tiết hóa đơn</b> (Rau củ theo ngày hoặc hóa đơn NPP An Phát, Keyfood). Tích chọn ô vuông để đánh dấu đã thanh toán.
             </div>
@@ -942,11 +1069,13 @@ export const InvoiceManager: React.FC = () => {
       {/* ========================================================================= */}
       {activeCategoryId && activeCategory && (
         <div className="space-y-4">
-          <div
-            ref={detailTableRef}
-            className="bg-white p-5 sm:p-7 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800"
-          >
-            {/* Header cho in ấn & chụp ảnh gửi sếp */}
+          <div className="w-full overflow-x-auto pb-4">
+            <div
+              ref={detailTableRef}
+              className="bg-white p-5 sm:p-7 rounded-2xl shadow-sm border border-slate-300 select-none text-slate-800 mx-auto"
+              style={{ width: '1280px', minWidth: '1280px' }}
+            >
+              {/* Header cho in ấn & chụp ảnh gửi sếp */}
             <div className="mb-4 pb-3 border-b-2 border-blue-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-800 text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
@@ -2342,7 +2471,8 @@ export const InvoiceManager: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* MODAL: THÊM / SỬA MẶT HÀNG HÓA ĐƠN */}
       {editingItem && (
@@ -2790,6 +2920,34 @@ export const InvoiceManager: React.FC = () => {
                 Hủy Bỏ
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TIẾN ĐỘ XUẤT ZIP */}
+      {isExportingZip && zipProgress && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Archive className="w-7 h-7 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800">Đang Tạo Trọn Bộ Ảnh Hóa Đơn (.ZIP)</h3>
+              <p className="text-xs text-slate-500 mt-1 font-semibold">
+                {zipProgress.name} ({zipProgress.current}/{zipProgress.total})
+              </p>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-amber-600 h-2.5 rounded-full transition-all duration-200"
+                style={{
+                  width: `${Math.max(5, Math.round((zipProgress.current / zipProgress.total) * 100))}%`,
+                }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Đang tự động chụp Ultra HD bảng tổng hợp & từng hóa đơn chi tiết gửi sếp...
+            </p>
           </div>
         </div>
       )}
