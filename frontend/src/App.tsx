@@ -321,9 +321,17 @@ export function App() {
   const handleDownloadImage = async () => {
     if (!scheduleTableRef.current) return;
     try {
-      const dateStr = `${currentMonday.getDate()}_${currentMonday.getMonth() + 1}`;
-      await downloadScheduleImage(scheduleTableRef.current, `Lich_Lam_Tuan_${dateStr}_UltraHD.png`);
-      showToast('Đã tải ảnh Ultra HD! Gửi file này vào Zalo để giữ nét 100% không bị nén.');
+      const sun = new Date(currentMonday);
+      sun.setDate(sun.getDate() + 6);
+      const startDay = String(currentMonday.getDate()).padStart(2, '0');
+      const startMonth = String(currentMonday.getMonth() + 1).padStart(2, '0');
+      const endDay = String(sun.getDate()).padStart(2, '0');
+      const endMonth = String(sun.getMonth() + 1).padStart(2, '0');
+      const year = sun.getFullYear();
+
+      const fileName = `Lich_Lam_Viec_Tu_${startDay}-${startMonth}_Den_${endDay}-${endMonth}-${year}_Nha_Hang_Tang2.png`;
+      await downloadScheduleImage(scheduleTableRef.current, fileName);
+      showToast(`📸 Đã tải file: ${fileName}! Gửi file này vào nhóm Zalo để nhân viên xem rõ nét 100%.`);
     } catch {
       showToast('Không thể xuất ảnh, vui lòng thử lại!', 'error');
     }
@@ -567,10 +575,10 @@ export function App() {
                   <button
                     onClick={handleDownloadImage}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer whitespace-nowrap"
-                    title="Tải ảnh PNG nét cao về máy"
+                    title="Tải ảnh lịch làm việc rõ nét về máy để gửi nhân viên qua Zalo"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Tải Ảnh PNG</span>
+                    <span>Tải Ảnh Gửi Nhân Viên</span>
                   </button>
                 </div>
               </div>
