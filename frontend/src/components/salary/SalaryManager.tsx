@@ -1,9 +1,9 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import type { Employee, DailyTimesheet, MonthlyPayrollRecord } from '../../types';
-import { downloadScheduleImage, copyScheduleImageToClipboard } from '../../utils/screenshot';
+import JSZip from 'jszip';
+import type { Employee, DailyTimesheet, MonthlyPayrollRecord, InvoiceCategory } from '../../types';
+import { downloadScheduleImage, copyScheduleImageToClipboard, captureElementToBlob } from '../../utils/screenshot';
 import { exportSalaryToExcel } from '../../utils/exportSalaryExcel';
-import { salaryApi } from '../../services/api';
-import { BulkReportExportModal } from '../export/BulkReportExportModal';
+import { salaryApi, invoiceApi } from '../../services/api';
 import { 
   Camera, 
   Copy, 
@@ -14,7 +14,8 @@ import {
   Trash2,
   FileSpreadsheet,
   Database,
-  Archive
+  Archive,
+  Loader2
 } from 'lucide-react';
 
 interface SalaryManagerProps {
@@ -113,8 +114,14 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
   const summaryTableRef = useRef<HTMLDivElement>(null);
   const detailTableRef = useRef<HTMLDivElement>(null);
 
-  // Modal Xuất Trọn Bộ Báo Cáo Sếp (.ZIP)
-  const [showBulkExportModal, setShowBulkExportModal] = useState<boolean>(false);
+  // ZIP export states and offscreen refs
+  const [isExportingZip, setIsExportingZip] = useState<boolean>(false);
+  const [zipProgress, setZipProgress] = useState<{ current: number; total: number; name: string } | null>(null);
+  const [zipTargetEmployee, setZipTargetEmployee] = useState<Employee | null>(null);
+  const [zipInvoiceCategories, setZipInvoiceCategories] = useState<InvoiceCategory[] | null>(null);
+  const offscreenSummaryRef = useRef<HTMLDivElement>(null);
+  const offscreenSlipRef = useRef<HTMLDivElement>(null);
+  const offscreenInvoiceSummaryRef = useRef<HTMLDivElement>(null);
 
   // Employee rates & base salaries state initialized from localStorage or employees
   const [employeeRates, setEmployeeRates] = useState<Record<number, { hourly: number; base: number }>>(() => {
@@ -536,7 +543,117 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     showToast('📋 Đã copy ảnh! Khi dán vào Zalo hãy tích chọn [HD] để ảnh nét 100%.');
   };
 
+  // Tải tất cả ảnh gồm 2 thư mục [1_Luong_Nhan_Vien] và [2_Hoa_Don_Thang] vào 1 file ZIP gửi sếp
+  const handleExportAllSalaryImagesZip = async () => {
+    if (isExportingZip) return;
+    setIsExportingZip(true);
+    setZipProgress({ current: 0, total: employees.length + 2, name: 'Bắt đầu khởi tạo dữ liệu...' });
 
+    try {
+      const zip = new JSZip();
+      const salaryFolder = zip.folder('1_Luong_Nhan_Vien');
+      const invoiceFolder = zip.folder('2_Hoa_Don_Thang');
+
+      // 1. Chụp Bảng Tổng Hợp Tiền Lương -> Folder 1
+      setZipProgress({ current: 1, total: employees.length + 2, name: '📸 Bảng Tổng Hợp Tiền Lương' });
+      await new Promise((r) => setTimeout(r, 90));
+
+      const summaryEl = offscreenSummaryRef.current || summaryTableRef.current;
+      if (summaryEl && salaryFolder) {
+        const summaryBlob = await captureElementToBlob(summaryEl, 2.5);
+        if (summaryBlob) {
+          salaryFolder.file(`00_Bang_Tong_Hop_Luong_Thang_${selectedMonth}_${selectedYear}.png`, summaryBlob);
+        }
+      }
+
+      // 2. Chụp chi tiết phiếu chấm công của từng nhân viên -> Folder 1
+      for (let i = 0; i < employees.length; i++) {
+        const emp = employees[i];
+        setZipProgress({
+          current: i + 2,
+          total: employees.length + 2,
+          name: `📸 Phiếu lương [${emp.fullName}] (${i + 1}/${employees.length})`,
+        });
+        setZipTargetEmployee(emp);
+
+        // Chờ React render phiếu của nhân viên này vào offscreen container
+        await new Promise((r) => setTimeout(r, 120));
+
+        if (offscreenSlipRef.current && salaryFolder) {
+          const slipBlob = await captureElementToBlob(offscreenSlipRef.current, 2.5);
+          if (slipBlob) {
+            const idxStr = String(i + 1).padStart(2, '0');
+            const safeName = emp.fullName.replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
+            salaryFolder.file(
+              `${idxStr}_Phieu_Luong_${safeName}_Thang_${selectedMonth}_${selectedYear}.png`,
+              slipBlob
+            );
+          }
+        }
+      }
+
+      // 3. Chụp Bảng Tổng Hợp Chi Phí Hóa Đơn -> Folder 2
+      let invoiceCats: InvoiceCategory[] = [];
+      try {
+        invoiceCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
+      } catch (e) {
+        console.warn('Lỗi tải danh mục hóa đơn:', e);
+      }
+
+      if (invoiceCats && invoiceCats.length > 0) {
+        setZipInvoiceCategories(invoiceCats);
+        setZipProgress({
+          current: employees.length + 2,
+          total: employees.length + 2,
+          name: '📸 Bảng Tổng Hợp Chi Phí Hóa Đơn & Nhập Hàng',
+        });
+        await new Promise((r) => setTimeout(r, 150));
+
+        if (offscreenInvoiceSummaryRef.current && invoiceFolder) {
+          const invoiceBlob = await captureElementToBlob(offscreenInvoiceSummaryRef.current, 2.5);
+          if (invoiceBlob) {
+            invoiceFolder.file(
+              `00_Bang_Tong_Hop_Chi_Phi_Hoa_Don_Thang_${selectedMonth}_${selectedYear}.png`,
+              invoiceBlob
+            );
+          }
+        }
+      }
+
+      // 4. Nén file ZIP
+      setZipProgress({
+        current: employees.length + 2,
+        total: employees.length + 2,
+        name: '📦 Đang nén 2 thư mục vào file ZIP...',
+      });
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+
+      // 5. Tải file về máy
+      const url = URL.createObjectURL(zipContent);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Tron_Bo_Bao_Cao_Luong_Va_Hoa_Don_Tang2_Thang_${selectedMonth}_${selectedYear}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch {}
+      }, 3000);
+
+      showToast(`📦 Đã tải file ZIP trọn bộ gồm 2 thư mục: [1_Luong_Nhan_Vien] và [2_Hoa_Don_Thang] gửi sếp thành công!`);
+    } catch (err) {
+      console.error('Lỗi khi nén file ZIP:', err);
+      showToast('⚠️ Có lỗi khi tạo file ZIP, vui lòng thử lại.');
+    } finally {
+      setIsExportingZip(false);
+      setZipProgress(null);
+      setZipTargetEmployee(null);
+      setZipInvoiceCategories(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -674,12 +791,17 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
 
             {/* Tải tất cả ảnh vào 1 file ZIP gửi sếp */}
             <button
-              onClick={() => setShowBulkExportModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-              title="Tải trọn bộ ảnh tiền lương & hóa đơn nén trong 1 file ZIP gửi sếp"
+              onClick={handleExportAllSalaryImagesZip}
+              disabled={isExportingZip}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              title="Tải trọn bộ ảnh bảng lương tổng & phiếu chấm công tất cả nhân viên nén trong 1 file ZIP gửi sếp"
             >
-              <Archive className="w-3.5 h-3.5 text-amber-100" />
-              <span>Tải Tất Cả Ảnh (.ZIP)</span>
+              {isExportingZip ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Archive className="w-3.5 h-3.5 text-amber-100" />
+              )}
+              <span>{isExportingZip ? 'Đang Nén ZIP...' : 'Tải Tất Cả Ảnh (.ZIP)'}</span>
             </button>
 
             {/* Xóa / Làm sạch dữ liệu */}
@@ -1393,18 +1515,418 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         </div>
       )}
 
-      {/* MODAL XUẤT TRỌN BỘ BÁO CÁO SẾP (.ZIP) */}
-      <BulkReportExportModal
-        isOpen={showBulkExportModal}
-        onClose={() => setShowBulkExportModal(false)}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        initialScope="all"
-        employees={employees}
-        timesheets={timesheets}
-        employeeRates={employeeRates}
-        employeeDebts={employeeDebts}
-      />
+      {/* MODAL TIẾN ĐỘ XUẤT ZIP */}
+      {isExportingZip && zipProgress && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Archive className="w-7 h-7 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800">Đang Tạo Trọn Bộ Ảnh (.ZIP)</h3>
+              <p className="text-xs text-slate-500 mt-1 font-semibold">
+                {zipProgress.name} ({zipProgress.current}/{zipProgress.total})
+              </p>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-amber-600 h-2.5 rounded-full transition-all duration-200"
+                style={{
+                  width: `${Math.max(5, Math.round((zipProgress.current / zipProgress.total) * 100))}%`,
+                }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Đang tự động chụp Ultra HD bảng tổng hợp & từng phiếu lương nhân viên gửi sếp...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* OFFSCREEN CONTAINER FOR ZIP EXPORT (ALWAYS IN DOM, RENDERED OFF-SCREEN)   */}
+      {/* ========================================================================= */}
+      <div
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: '1050px',
+          zIndex: -9999,
+          backgroundColor: '#ffffff',
+          pointerEvents: 'none',
+        }}
+      >
+        {/* 1. Offscreen Summary Table */}
+        <div
+          ref={offscreenSummaryRef}
+          className="bg-white p-6 rounded-2xl border border-slate-300 select-none text-slate-800"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2">
+              <span>BẢNG TỔNG HỢP TIỀN LƯƠNG THÁNG {selectedMonth}/{selectedYear}</span>
+              <span>🧮</span>
+            </div>
+          </div>
+
+          <div className="border-b-2 border-emerald-800 pb-3 mb-4 flex justify-between items-end">
+            <div>
+              <h2 className="text-xl font-black text-emerald-950 uppercase tracking-tight">
+                NHÀ HÀNG TẦNG 2 — BẢNG TỔNG HỢP TIỀN LƯƠNG NHÂN VIÊN
+              </h2>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear} | Tổng nhân sự: {employees.length}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-slate-500 font-bold block">Tổng tiền thực chi:</span>
+              <span className="text-lg font-black text-emerald-900 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-300">
+                {totalAllSalary.toLocaleString('vi-VN')} đ
+              </span>
+            </div>
+          </div>
+
+          <table className="w-full border-collapse border-2 border-gray-600 text-xs">
+            <thead>
+              <tr className="bg-[#245839] text-white font-extrabold select-none">
+                <th className="border border-gray-500 py-2 px-2 text-center w-10">STT</th>
+                <th className="border border-gray-500 py-2 px-3 text-left">Họ và Tên</th>
+                <th className="border border-gray-500 py-2 px-2 text-center w-24">Vị trí</th>
+                <th className="border border-gray-500 py-2 px-2 text-center w-24">Lương/giờ</th>
+                <th className="border border-gray-500 py-2 px-2 text-center w-20">Tổng giờ</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-28">Tiền công giờ</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-28">Lương cứng</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-28 bg-rose-900">Công nợ / Ứng</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-32 bg-emerald-900">Thực nhận</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-24">Ký nhận</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allEmployeesSalarySummary.map((emp, idx) => (
+                <tr key={emp.id} className="border-b border-gray-300">
+                  <td className="border border-gray-400 py-2 px-2 text-center font-bold">{idx + 1}</td>
+                  <td className="border border-gray-400 py-2 px-3 text-left font-black text-gray-900">{emp.name}</td>
+                  <td className="border border-gray-400 py-2 px-2 text-center text-slate-600 font-semibold">{emp.role}</td>
+                  <td className="border border-gray-400 py-2 px-2 text-center font-bold">{emp.hourlyRate.toLocaleString('vi-VN')}</td>
+                  <td className="border border-gray-400 py-2 px-2 text-center font-black">{emp.totalHours > 0 ? String(emp.totalHours).replace('.', ',') : '0'}</td>
+                  <td className="border border-gray-400 py-2 px-3 text-center font-bold text-gray-900">{emp.hoursPay > 0 ? emp.hoursPay.toLocaleString('vi-VN') : '0'}</td>
+                  <td className="border border-gray-400 py-2 px-3 text-center font-bold text-gray-900">{emp.baseSalary > 0 ? emp.baseSalary.toLocaleString('vi-VN') : '-'}</td>
+                  <td className="border border-gray-400 py-2 px-3 text-center font-bold text-rose-600 bg-rose-50/50">
+                    {emp.debtAmount > 0 ? `-${emp.debtAmount.toLocaleString('vi-VN')}` : '-'}
+                  </td>
+                  <td className="border border-gray-400 py-2 px-3 text-center font-black text-emerald-900 bg-emerald-50/60 text-sm">
+                    {emp.totalSalary.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="border border-gray-400 py-2 px-3 text-center text-[10px] text-slate-400 italic">
+                    {emp.totalSalary > 0 ? '(Ký tên)' : ''}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-slate-100 font-black text-xs">
+                <td colSpan={4} className="border border-gray-500 py-2.5 px-3 text-center font-extrabold uppercase">
+                  TỔNG CỘNG ({employees.length} NHÂN SỰ):
+                </td>
+                <td className="border border-gray-500 py-2.5 px-2 text-center font-black">
+                  {String(totalAllHours).replace('.', ',')}
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center font-bold">
+                  {totalAllHoursPay.toLocaleString('vi-VN')}
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center font-bold">
+                  {totalAllBaseSalary.toLocaleString('vi-VN')}
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center font-bold text-rose-700 bg-rose-50">
+                  {totalAllDebt > 0 ? `-${totalAllDebt.toLocaleString('vi-VN')}` : '-'}
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center text-emerald-900 text-sm font-black bg-emerald-100/70">
+                  {totalAllSalary.toLocaleString('vi-VN')} đ
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Signatures */}
+          <div className="mt-8 pt-4 border-t border-slate-300 grid grid-cols-3 gap-4 text-center text-xs">
+            <div>
+              <div className="font-bold text-slate-800">Người lập biểu</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+              <div className="h-16"></div>
+            </div>
+            <div>
+              <div className="font-bold text-slate-800">Quản lý nhà hàng</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+              <div className="h-16"></div>
+            </div>
+            <div>
+              <div className="font-bold text-slate-800">Ban Giám Đốc duyệt chi</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">(Ký & đóng dấu)</div>
+              <div className="h-16"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Offscreen Employee Timesheet Slip */}
+        {zipTargetEmployee && (() => {
+          const emp = zipTargetEmployee;
+          const ts = timesheets[emp.id] || createPeriodTimesheet(emp.id, employeeRates[emp.id]?.hourly || 35000, selectedMonth, selectedYear, false);
+          const rate = employeeRates[emp.id]?.hourly || emp.hourlyRate || 35000;
+          const base = employeeRates[emp.id]?.base || 0;
+          const debt = employeeDebts[emp.id]?.amount || 0;
+          const debtNote = employeeDebts[emp.id]?.note || '';
+          const totalH = ts.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
+          const hoursPay = totalH * rate;
+          const totalSalary = hoursPay + base - debt;
+
+          return (
+            <div
+              ref={offscreenSlipRef}
+              className="bg-white p-6 rounded-2xl border border-slate-300 select-none text-slate-800 mt-6"
+            >
+              {/* Header info */}
+              <div className="flex justify-between items-start pb-3 mb-3 border-b-2 border-emerald-800">
+                <div>
+                  <div className="bg-[#245839] text-white px-3 py-1 text-xs font-bold rounded-md inline-block mb-1.5">
+                    NHÀ HÀNG TẦNG 2 — PHIẾU CHẤM CÔNG & LƯƠNG CHI TIẾT
+                  </div>
+                  <h3 className="text-xl font-black text-emerald-950 uppercase tracking-tight">
+                    {emp.fullName} ({emp.role || 'Nhân viên'})
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                    Kỳ lương: Tháng {selectedMonth}/{selectedYear} | Đơn giá: <b>{rate.toLocaleString('vi-VN')} đ/h</b>
+                  </p>
+                </div>
+
+                <div className="text-right space-y-1">
+                  <div className="text-xs font-bold text-slate-600">
+                    Tổng giờ làm: <b className="text-slate-900">{String(totalH).replace('.', ',')} giờ</b>
+                  </div>
+                  <div className="text-xs font-bold text-slate-600">
+                    Lương giờ: <b className="text-slate-900">{hoursPay.toLocaleString('vi-VN')} đ</b>
+                  </div>
+                  {base > 0 && (
+                    <div className="text-xs font-bold text-slate-600">
+                      Lương cứng: <b className="text-slate-900">+{base.toLocaleString('vi-VN')} đ</b>
+                    </div>
+                  )}
+                  {debt > 0 && (
+                    <div className="text-xs font-bold text-rose-600">
+                      Công nợ / Ứng: <b>-{debt.toLocaleString('vi-VN')} đ</b> {debtNote ? `(${debtNote})` : ''}
+                    </div>
+                  )}
+                  <div className="pt-1">
+                    <span className="text-xs font-black text-emerald-900 bg-emerald-100/80 px-3 py-1 rounded-lg border border-emerald-300 text-sm">
+                      THỰC NHẬN: {totalSalary.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table matching Image 2 with cyan header and lime date column */}
+              <table className="w-full border-collapse border-2 border-gray-600 text-xs">
+                <thead>
+                  <tr className="bg-[#00e5ff] text-black font-extrabold select-none">
+                    <th className="border border-gray-600 py-2 px-2 text-center w-16">Ngày</th>
+                    <th className="border border-gray-600 py-2 px-2 text-center w-24">Bắt đầu</th>
+                    <th className="border border-gray-600 py-2 px-2 text-center w-24">Kết thúc</th>
+                    <th className="border border-gray-600 py-2 px-3 text-center min-w-[140px]">Tổng giờ (Tiếng)</th>
+                    <th className="border border-gray-600 py-2 px-2 text-center w-24">Hệ số lương</th>
+                    <th className="border border-gray-600 py-2 px-3 text-center w-28">Tiền công ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ts.map((item) => {
+                    const isOff = item.isOff;
+                    return (
+                      <tr key={item.day}>
+                        <td className="border border-gray-600 py-1.5 px-2 text-center font-bold bg-[#a3e635]/50 text-gray-900">
+                          {item.dateStr}
+                        </td>
+                        {isOff ? (
+                          <>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center bg-[#ff0000]"></td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center bg-[#ff0000]"></td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center bg-[#ff0000]"></td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center bg-[#ff0000] text-black font-bold">
+                              {item.hourlyRate}
+                            </td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center bg-[#ff0000] text-black font-bold">
+                              0
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center font-bold text-gray-900 bg-white">
+                              {item.startTime}
+                            </td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center font-bold text-gray-900 bg-white">
+                              {item.endTime}
+                            </td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center font-bold text-gray-900 bg-white">
+                              {item.totalHours > 0 ? String(item.totalHours).replace('.', ',') : ''}
+                            </td>
+                            <td className="border border-gray-600 py-2 px-2 text-center font-bold text-gray-900 bg-white">
+                              {item.hourlyRate}
+                            </td>
+                            <td className="border border-gray-600 py-1.5 px-2 text-center font-extrabold text-emerald-800 bg-white">
+                              {item.dailyPay > 0 ? item.dailyPay.toLocaleString('vi-VN') : ''}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                  <tr className="font-black text-xs">
+                    <td
+                      colSpan={3}
+                      className="border border-gray-600 py-2 px-3 text-center bg-[#ff0000] text-black font-black text-sm"
+                    >
+                      Tổng
+                    </td>
+                    <td className="border border-gray-600 py-2 px-3 text-center bg-[#ff0000] text-black font-black">
+                      {String(totalH).replace('.', ',')}
+                    </td>
+                    <td className="border border-gray-600 py-2 px-3 text-center bg-[#ff0000]"></td>
+                    <td className="border border-gray-600 py-2 px-3 text-center bg-[#ff0000] text-black font-black text-sm">
+                      {hoursPay.toLocaleString('vi-VN')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Signatures */}
+              <div className="mt-6 pt-3 border-t border-slate-300 grid grid-cols-2 gap-4 text-center text-xs">
+                <div>
+                  <div className="font-bold text-slate-800">Nhân viên xác nhận</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                  <div className="h-12"></div>
+                </div>
+                <div>
+                  <div className="font-bold text-slate-800">Quản lý / Người duyệt</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                  <div className="h-12"></div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 3. Offscreen Invoice Summary Table for Folder 2 */}
+        {zipInvoiceCategories && zipInvoiceCategories.length > 0 && (
+          <div
+            ref={offscreenInvoiceSummaryRef}
+            className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-300 select-none text-slate-800 mt-6"
+            style={{ width: '1050px' }}
+          >
+            {/* Header cho in ấn & chụp ảnh gửi sếp */}
+            <div className="mb-4 pb-3 border-b-2 border-emerald-900/30 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm">
+                  T2
+                </div>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                    NHÀ HÀNG TẦNG 2 • QUẢN LÝ TÀI CHÍNH
+                  </div>
+                  <h1 className="text-lg font-black text-slate-900 leading-tight">
+                    BẢNG TỔNG HỢP CHI PHÍ HÓA ĐƠN & NHẬP HÀNG
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold text-slate-700">
+                  Tổng chi phí:{' '}
+                  <span className="text-emerald-800 font-black">
+                    {zipInvoiceCategories
+                      .reduce((sum, c) => sum + (c.fixedAmount || c.totalAmount || 0), 0)
+                      .toLocaleString('vi-VN')}{' '}
+                    đ
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Sheet Tab */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2">
+                <span>T{selectedMonth}_{selectedYear}</span>
+                <span className="text-[10px] opacity-80">▼</span>
+                <span>🧮</span>
+              </div>
+            </div>
+
+            {/* Main Table Matching Image 1 */}
+            <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+              <thead>
+                <tr className="bg-[#245839] text-white font-extrabold select-none">
+                  <th className="border border-gray-500 py-3 px-3 text-center w-16">순번</th>
+                  <th className="border border-gray-500 py-3 px-4 text-center">품목 (Hạng mục)</th>
+                  <th className="border border-gray-500 py-3 px-4 text-center min-w-[130px]">금액 (Số tiền)</th>
+                  <th className="border border-gray-500 py-3 px-3 text-center w-20">결제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zipInvoiceCategories.map((cat, idx) => {
+                  const total = cat.fixedAmount || cat.totalAmount || 0;
+                  return (
+                    <tr key={cat.id}>
+                      <td className="border border-gray-500 py-2.5 px-3 text-center font-bold text-gray-900 bg-white">
+                        {idx + 1}
+                      </td>
+                      <td className="border border-gray-500 py-2.5 px-4 text-center font-bold text-gray-900 bg-white">
+                        {cat.name}
+                      </td>
+                      <td className="border border-gray-500 py-2.5 px-4 text-center font-bold text-gray-900 bg-white">
+                        {total.toLocaleString('vi-VN')} đ
+                      </td>
+                      <td className="border border-gray-500 py-2.5 px-3 text-center bg-white">
+                        <div className="flex items-center justify-center">
+                          {cat.isPaid ? (
+                            <div className="w-5 h-5 bg-emerald-700 text-white rounded-sm flex items-center justify-center text-xs font-black">
+                              ✓
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 border-2 border-gray-700 rounded-sm bg-white"></div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Grand Total */}
+                <tr className="bg-white font-black text-sm">
+                  <td colSpan={2} className="border border-gray-500 py-3 px-4 text-center bg-[#ff0000] text-black font-black text-base">
+                    Tổng
+                  </td>
+                  <td className="border border-gray-500 py-3 px-4 text-center bg-[#ffff00] text-black font-black text-base">
+                    {zipInvoiceCategories
+                      .reduce((sum, c) => sum + (c.fixedAmount || c.totalAmount || 0), 0)
+                      .toLocaleString('vi-VN')} đ
+                  </td>
+                  <td className="border border-gray-500 py-3 px-3 text-center bg-white"></td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Signatures */}
+            <div className="mt-8 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-center text-xs">
+              <div>
+                <div className="font-bold text-slate-800">Kế toán nhà hàng</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-12"></div>
+              </div>
+              <div>
+                <div className="font-bold text-slate-800">Quản lý / Người duyệt</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-12"></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -15,10 +15,8 @@ import {
   Sparkles,
   FileSpreadsheet,
   Database,
-  Archive,
 } from 'lucide-react';
 import { InvoiceScannerModal } from './InvoiceScannerModal';
-import { BulkReportExportModal } from '../export/BulkReportExportModal';
 
 // Initial fallback categories matching Image 1
 const INITIAL_CATEGORIES: InvoiceCategory[] = [
@@ -60,9 +58,6 @@ export const InvoiceManager: React.FC = () => {
 
   // Modal Xóa / Làm Sạch Dữ Liệu
   const [showClearModal, setShowClearModal] = useState<boolean>(false);
-
-  // Modal Xuất Trọn Bộ Báo Cáo Sếp (.ZIP)
-  const [showBulkExportModal, setShowBulkExportModal] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem('tang2_invoice_selected_month', String(selectedMonth));
@@ -721,16 +716,6 @@ export const InvoiceManager: React.FC = () => {
             >
               <Camera className="w-3.5 h-3.5 text-slate-600" />
               <span>Tải Ảnh HD</span>
-            </button>
-
-            {/* Tải tất cả ảnh vào 1 file ZIP gửi sếp */}
-            <button
-              onClick={() => setShowBulkExportModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-              title="Tải trọn bộ ảnh tiền lương & hóa đơn nén trong 1 file ZIP gửi sếp"
-            >
-              <Archive className="w-3.5 h-3.5 text-amber-100" />
-              <span>Tải Tất Cả Ảnh (.ZIP)</span>
             </button>
 
             {/* Xóa / Làm sạch dữ liệu */}
@@ -2816,17 +2801,6 @@ export const InvoiceManager: React.FC = () => {
         categories={categories}
         currentCategoryId={activeCategoryId}
         onSaveItems={handleSaveScannedItems}
-      />
-
-      {/* MODAL: XUẤT TRỌN BỘ BÁO CÁO SẾP (.ZIP) */}
-      <BulkReportExportModal
-        isOpen={showBulkExportModal}
-        onClose={() => setShowBulkExportModal(false)}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        initialScope="all"
-        categories={categories}
-        categoryItems={categoryItems}
       />
     </div>
   );

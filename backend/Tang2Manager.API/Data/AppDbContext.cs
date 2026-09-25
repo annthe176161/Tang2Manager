@@ -22,6 +22,29 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Employee>(entity =>
+        {
+            entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
+            entity.Property(e => e.BaseSalary).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<InvoiceCategory>(entity =>
+        {
+            entity.Property(e => e.FixedAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<InvoiceItem>(entity =>
+        {
+            entity.Property(e => e.Quantity).HasPrecision(18, 2);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
+            entity.Property(e => e.TaxRate).HasPrecision(18, 2);
+            entity.Property(e => e.TaxAmount).HasPrecision(18, 2);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.TotalPayment).HasPrecision(18, 2);
+            entity.Property(e => e.DepositFee).HasPrecision(18, 2);
+            entity.Property(e => e.ShipFee).HasPrecision(18, 2);
+        });
+
         modelBuilder.Entity<MonthlyCategoryRecord>(entity =>
         {
             entity.HasKey(e => new { e.CategoryId, e.Year, e.Month });

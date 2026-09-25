@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.20.0",
+    "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.2",
     "lucide-react": "^1.47.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.2.10",
+    "@types/file-saver": "^2.0.7",
     "@types/jszip": "^3.4.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
