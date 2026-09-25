@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Tang2Manager.API.Data;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory,
+    WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+});
 
 // Set default URL to port 5000 on all network interfaces (LAN/WiFi + localhost)
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && 

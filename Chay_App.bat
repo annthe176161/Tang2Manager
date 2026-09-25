@@ -22,9 +22,7 @@ if %ERRORLEVEL% equ 0 (
 )
 
 echo [*] Dang khoi dong may chu Backend...
-cd /d "D:\Tang2Manager\dist_app"
-start "Tang2Manager Backend" /min "D:\Tang2Manager\dist_app\Tang2Manager.API.exe"
-cd /d "D:\Tang2Manager"
+start "Tang2Manager Backend" /d "%~dp0dist_app" /min "%~dp0dist_app\Tang2Manager.API.exe"
 
 :: 3. Vong lap cho may chu san sang 100% tren port 5000
 echo [*] Dang ket noi voi he thong, vui long doi vai giay...
