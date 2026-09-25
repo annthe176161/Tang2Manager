@@ -24,6 +24,7 @@ export interface BulkReportExportModalProps {
   selectedMonth: number;
   selectedYear: number;
   initialScope?: 'all' | 'salary' | 'invoice';
+  autoStart?: boolean;
   // Optional preloaded data
   employees?: Employee[];
   timesheets?: Record<number, DailyTimesheet[]>;
@@ -41,6 +42,7 @@ export const BulkReportExportModal: React.FC<BulkReportExportModalProps> = ({
   selectedMonth,
   selectedYear,
   initialScope = 'all',
+  autoStart = false,
   employees: propEmployees,
   timesheets: propTimesheets,
   employeeRates: propRates,
@@ -213,7 +215,7 @@ export const BulkReportExportModal: React.FC<BulkReportExportModalProps> = ({
       // PHASE 1: XUẤT ẢNH TIỀN LƯƠNG
       // ==========================================
       if (doSalary) {
-        const salaryFolder = scope === 'all' ? zip.folder('1_Bang_Luong_Nhan_Vien') : zip;
+        const salaryFolder = scope === 'all' ? zip.folder('1_Luong_Nhan_Vien') : zip;
 
         // 1.1 Chụp Bảng Tổng Hợp Lương
         currentStep++;
@@ -265,7 +267,7 @@ export const BulkReportExportModal: React.FC<BulkReportExportModalProps> = ({
       // PHASE 2: XUẤT ẢNH HÓA ĐƠN & NHẬP HÀNG
       // ==========================================
       if (doInvoice) {
-        const invoiceFolder = scope === 'all' ? zip.folder('2_Hoa_Don_Nhap_Hang') : zip;
+        const invoiceFolder = scope === 'all' ? zip.folder('2_Hoa_Don_Thang') : zip;
 
         // 2.1 Chụp Bảng Tổng Hợp Chi Phí Hóa Đơn
         currentStep++;
@@ -356,6 +358,12 @@ export const BulkReportExportModal: React.FC<BulkReportExportModalProps> = ({
       setTargetCategory(null);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && autoStart && !isExporting && !isFinished) {
+      handleStartExport();
+    }
+  }, [isOpen, autoStart]);
 
   // Build salary summary list for offscreen summary
   const summaryList: SalarySummaryItem[] = allEmployees.map((emp) => {
@@ -501,7 +509,7 @@ export const BulkReportExportModal: React.FC<BulkReportExportModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Bao gồm thư mục <b>1_Bang_Luong_Nhan_Vien</b> (bảng tổng hợp + toàn bộ phiếu chấm công chi tiết từng người) và thư mục <b>2_Hoa_Don_Nhap_Hang</b> (bảng tổng hợp chi phí + chi tiết các nhà cung cấp).
+                    Bao gồm 2 thư mục: <b>1_Luong_Nhan_Vien</b> (bảng tổng hợp + toàn bộ phiếu chấm công chi tiết từng người) và <b>2_Hoa_Don_Thang</b> (bảng tổng hợp chi phí + chi tiết các hóa đơn của tháng).
                   </p>
                   <div className="text-[11px] font-bold text-emerald-800 mt-1.5 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />

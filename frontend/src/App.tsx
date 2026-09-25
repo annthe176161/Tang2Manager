@@ -18,8 +18,10 @@ import {
   Store,
   DollarSign,
   Receipt,
-  RotateCcw
+  RotateCcw,
+  FolderArchive
 } from 'lucide-react';
+import { BulkReportExportModal } from './components/export/BulkReportExportModal';
 
 const INITIAL_EMPLOYEES: Employee[] = [
   { id: 1, fullName: 'An', role: 'Nhân viên', hourlyRate: 40000, baseSalary: 0, isActive: true, displayOrder: 1 },
@@ -57,6 +59,15 @@ export function App() {
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMonday(new Date()));
   const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'salary' | 'invoice'>('invoice');
+  const [showGlobalExportModal, setShowGlobalExportModal] = useState<boolean>(false);
+  const [exportMonth] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_salary_selected_month') || localStorage.getItem('tang2_invoice_selected_month');
+    return saved ? Number(saved) : 9;
+  });
+  const [exportYear] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_salary_selected_year') || localStorage.getItem('tang2_invoice_selected_year');
+    return saved ? Number(saved) : 2026;
+  });
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [shifts, setShifts] = useState<ShiftTemplate[]>(INITIAL_SHIFTS);
   const [assignments, setAssignments] = useState<Assignment[]>([
@@ -381,7 +392,37 @@ export function App() {
       )}
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Top Global Action Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 sm:px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-800 to-teal-700 flex items-center justify-center text-white shadow-sm shrink-0">
+              <Store className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-slate-900 text-sm sm:text-base tracking-tight">NHÀ HÀNG TẦNG 2</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Quản Trị Hệ Thống
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                Kỳ báo cáo: Tháng {exportMonth}/{exportYear}
+              </p>
+            </div>
+          </div>
+
+          {/* Nút Tải Toàn Bộ Ảnh (Lương & Hóa Đơn) vào 1 File ZIP */}
+          <button
+            onClick={() => setShowGlobalExportModal(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-800 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-md shadow-amber-900/20 hover:scale-[1.01] active:scale-[0.99] transition cursor-pointer"
+            title="Tải 1 file ZIP duy nhất chứa 2 thư mục: [1_Luong_Nhan_Vien] và [2_Hoa_Don_Thang] gửi Sếp"
+          >
+            <FolderArchive className="w-4 h-4 text-amber-100" />
+            <span>Tải Báo Cáo Tháng (File ZIP 2 Thư Mục)</span>
+          </button>
+        </div>
+
         {/* Main Feature Tabs */}
         <nav className="bg-white/95 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl shadow-sm border border-slate-200/90">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
@@ -671,6 +712,16 @@ export function App() {
           </>
         )}
       </div>
+
+      {/* Global Bulk Report Export Modal (ZIP with 2 Folders) */}
+      <BulkReportExportModal
+        isOpen={showGlobalExportModal}
+        onClose={() => setShowGlobalExportModal(false)}
+        selectedMonth={exportMonth}
+        selectedYear={exportYear}
+        initialScope="all"
+        employees={employees}
+      />
     </div>
   );
 }
