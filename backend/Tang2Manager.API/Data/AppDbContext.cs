@@ -16,10 +16,17 @@ public class AppDbContext : DbContext
     public DbSet<InvoiceCategory> InvoiceCategories => Set<InvoiceCategory>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<MonthlyPayroll> MonthlyPayrolls => Set<MonthlyPayroll>();
+    public DbSet<MonthlyCategoryRecord> MonthlyCategoryRecords => Set<MonthlyCategoryRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<MonthlyCategoryRecord>(entity =>
+        {
+            entity.HasKey(e => new { e.CategoryId, e.Year, e.Month });
+            entity.Property(e => e.FixedAmount).HasPrecision(18, 2);
+        });
 
         modelBuilder.Entity<MonthlyPayroll>(entity =>
         {

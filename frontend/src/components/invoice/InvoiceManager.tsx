@@ -118,11 +118,11 @@ export const InvoiceManager: React.FC = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Load from API on mount
+  // Load from API on mount and when period changes
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const fetchedCats = await invoiceApi.getCategories();
+        const fetchedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
         if (fetchedCats && fetchedCats.length > 0) {
           setCategories(fetchedCats);
           setIsDbSynced(true);
@@ -133,23 +133,21 @@ export const InvoiceManager: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   // When active category changes, fetch items from API if available
   useEffect(() => {
     if (!activeCategoryId) return;
     const fetchItems = async () => {
       try {
-        const items = await invoiceApi.getItemsByCategory(activeCategoryId);
-        if (items && items.length > 0) {
-          setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: items }));
-        }
+        const items = await invoiceApi.getItemsByCategory(activeCategoryId, selectedMonth, selectedYear);
+        setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: items || [] }));
       } catch (err) {
         console.log('Using local fallback for items:', err);
       }
     };
     fetchItems();
-  }, [activeCategoryId]);
+  }, [activeCategoryId, selectedMonth, selectedYear]);
 
   const activeCategory = categories.find((c) => c.id === activeCategoryId);
   const currentItems = activeCategoryId ? categoryItems[activeCategoryId] || [] : [];
@@ -162,7 +160,7 @@ export const InvoiceManager: React.FC = () => {
       prev.map((c) => (c.id === catId ? { ...c, isPaid: !c.isPaid } : c))
     );
     try {
-      await invoiceApi.togglePayment(catId);
+      await invoiceApi.togglePayment(catId, selectedMonth, selectedYear);
     } catch (err) {
       console.log('Payment toggled locally:', err);
     }
@@ -253,18 +251,20 @@ export const InvoiceManager: React.FC = () => {
       totalPayment,
       displayOrder: editingItem.displayOrder || currentItems.length + 1,
       note: editingItem.note || '',
+      month: selectedMonth,
+      year: selectedYear,
     };
 
     if (isNewItem) {
       try {
         const saved = await invoiceApi.createItem({ ...itemToSave, id: 0 });
-        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId);
+        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId, selectedMonth, selectedYear);
         setCategoryItems((prev) => ({
           ...prev,
           [activeCategoryId]: freshItems && freshItems.length > 0 ? freshItems : [...(prev[activeCategoryId] || []), saved || itemToSave],
         }));
 
-        const updatedCats = await invoiceApi.getCategories();
+        const updatedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
         if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
 
         showToast(`💾 Đã lưu mặt hàng [${itemToSave.itemName}] vào Database SQL Server!`);
@@ -279,7 +279,7 @@ export const InvoiceManager: React.FC = () => {
     } else {
       try {
         if (itemToSave.id) await invoiceApi.updateItem(itemToSave.id, itemToSave);
-        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId);
+        const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId, selectedMonth, selectedYear);
         setCategoryItems((prev) => ({
           ...prev,
           [activeCategoryId]: freshItems && freshItems.length > 0
@@ -287,7 +287,7 @@ export const InvoiceManager: React.FC = () => {
             : (prev[activeCategoryId] || []).map((i) => (i.id === itemToSave.id ? itemToSave : i)),
         }));
 
-        const updatedCats = await invoiceApi.getCategories();
+        const updatedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
         if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
 
         showToast(`💾 Đã cập nhật [${itemToSave.itemName}] trong Database!`);
@@ -344,13 +344,18 @@ export const InvoiceManager: React.FC = () => {
       )
     );
     try {
-      await invoiceApi.updateCategory(editingCategoryAmount.id, {
-        ...editingCategoryAmount,
-        fixedAmount: fixedAmountInput,
-      });
-      const updatedCats = await invoiceApi.getCategories();
+      await invoiceApi.updateCategory(
+        editingCategoryAmount.id,
+        {
+          ...editingCategoryAmount,
+          fixedAmount: fixedAmountInput,
+        },
+        selectedMonth,
+        selectedYear
+      );
+      const updatedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
       if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
-      showToast(`💾 Đã cập nhật số tiền [${editingCategoryAmount.name}] vào Database!`);
+      showToast(`💾 Đã cập nhật số tiền [${editingCategoryAmount.name}] Tháng ${selectedMonth}/${selectedYear} vào Database!`);
     } catch (e) {
       console.error('Error updating category fixed amount:', e);
       showToast(`Đã cập nhật số tiền cho [${editingCategoryAmount.name}]!`);
@@ -377,14 +382,16 @@ export const InvoiceManager: React.FC = () => {
       totalPayment: Number(it.totalPayment) || Number(it.amount) || 0,
       displayOrder: existingCount + idx + 1,
       note: it.note || '',
+      month: selectedMonth,
+      year: selectedYear,
     }));
 
     try {
       // 1. Save directly to SQL Server database via batch API
-      const savedItems = await invoiceApi.createBatchItems(itemsPayload);
+      const savedItems = await invoiceApi.createBatchItems(itemsPayload, selectedMonth, selectedYear);
 
       // 2. Fetch fresh items from database for this category
-      const freshItems = await invoiceApi.getItemsByCategory(categoryId);
+      const freshItems = await invoiceApi.getItemsByCategory(categoryId, selectedMonth, selectedYear);
       setCategoryItems((prev) => ({
         ...prev,
         [categoryId]: freshItems && freshItems.length > 0 
@@ -396,7 +403,7 @@ export const InvoiceManager: React.FC = () => {
       setActiveCategoryId(categoryId);
 
       // 4. Update categories summary so total reflects database immediately
-      const updatedCats = await invoiceApi.getCategories();
+      const updatedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
       if (updatedCats && updatedCats.length > 0) {
         setCategories(updatedCats);
       }
@@ -482,24 +489,34 @@ export const InvoiceManager: React.FC = () => {
     }
   };
 
-  // Clear / Làm sạch tất cả dữ liệu hóa đơn trong DB
+  // Clear / Làm sạch tất cả dữ liệu hóa đơn trong DB cho đúng Tháng đang chọn
   const handleClearData = async () => {
     try {
-      await invoiceApi.clearInvoiceData(activeCategoryId || undefined);
+      await invoiceApi.clearInvoiceData(selectedMonth, selectedYear, activeCategoryId || undefined);
       if (activeCategoryId) {
         setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: [] }));
         setCategories((prev) =>
           prev.map((c) => (c.id === activeCategoryId ? { ...c, fixedAmount: 0, isPaid: false } : c))
         );
-        showToast(`🗑️ Đã làm sạch toàn bộ hóa đơn của [${activeCategory?.name}] trong Database SQL Server!`);
+        showToast(`🗑️ Đã làm sạch số tiền mục [${activeCategory?.name}] Tháng ${selectedMonth}/${selectedYear} trong Database (Giữ nguyên mục)!`);
       } else {
         setCategoryItems({});
         setCategories((prev) => prev.map((c) => ({ ...c, fixedAmount: 0, isPaid: false })));
-        showToast('🗑️ Đã làm sạch toàn bộ dữ liệu hóa đơn của tất cả các mục trong Database SQL Server!');
+        showToast(`🗑️ Đã làm sạch toàn bộ số tiền hóa đơn Tháng ${selectedMonth}/${selectedYear} trong Database (Giữ nguyên toàn bộ danh mục)!`);
       }
     } catch (err) {
       console.error('Lỗi khi làm sạch dữ liệu hóa đơn:', err);
-      showToast('⚠️ Không thể kết nối Database, vui lòng thử lại.');
+      // Optimistic local fallback
+      if (activeCategoryId) {
+        setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: [] }));
+        setCategories((prev) =>
+          prev.map((c) => (c.id === activeCategoryId ? { ...c, fixedAmount: 0, isPaid: false } : c))
+        );
+      } else {
+        setCategoryItems({});
+        setCategories((prev) => prev.map((c) => ({ ...c, fixedAmount: 0, isPaid: false })));
+      }
+      showToast(`Đã làm sạch số tiền hóa đơn Tháng ${selectedMonth}/${selectedYear}!`);
     }
     setShowClearModal(false);
   };
@@ -1542,28 +1559,36 @@ export const InvoiceManager: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">
-                  {activeCategory ? `Xóa Hóa Đơn [${activeCategory.name}]` : 'Làm Sạch Dữ Liệu Hóa Đơn'}
+                  {activeCategory
+                    ? `Làm Sạch Giá Mục [${activeCategory.name}] Tháng ${selectedMonth}/${selectedYear}`
+                    : `Làm Sạch Tổng Giá Tháng ${selectedMonth}/${selectedYear}`}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">Hành động này sẽ cập nhật vào Database SQL Server</p>
+                <p className="text-xs text-slate-500 font-medium">Chỉ làm sạch số tiền tháng đang chọn, giữ nguyên danh mục</p>
               </div>
             </div>
 
-            <div className="my-4 p-3.5 bg-rose-50/80 rounded-xl border border-rose-200 text-xs text-rose-900 leading-relaxed font-medium">
+            <div className="my-4 p-3.5 bg-rose-50/80 rounded-xl border border-rose-200 text-xs text-rose-900 leading-relaxed font-medium space-y-2">
               {activeCategory ? (
                 <>
-                  Bạn có chắc chắn muốn xóa <b>toàn bộ {currentItems.length} mặt hàng</b> trong hóa đơn <b>[{activeCategory.name}]</b>?
-                  <br />
-                  <span className="text-[11px] text-rose-700 mt-1 block">
-                    ⚠️ Dữ liệu mặt hàng sẽ bị xóa vĩnh viễn khỏi Database và tổng chi phí mục này sẽ về 0.
-                  </span>
+                  <div>
+                    Bạn có chắc chắn muốn làm sạch toàn bộ <b>{currentItems.length} mặt hàng</b> trong hóa đơn <b>[{activeCategory.name}]</b> của <b>Tháng {selectedMonth}/{selectedYear}</b>?
+                  </div>
+                  <div className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-rose-200">
+                    <div>✓ <b>Mục [{activeCategory.name}]</b> vẫn được giữ nguyên trong hệ thống (không bị xóa).</div>
+                    <div>✓ Chỉ xóa các mặt hàng chi tiết và đưa tổng tiền tháng {selectedMonth}/{selectedYear} về 0.</div>
+                    <div>✓ Dữ liệu của các tháng khác được bảo toàn 100%.</div>
+                  </div>
                 </>
               ) : (
                 <>
-                  Bạn có chắc chắn muốn <b>làm sạch toàn bộ hóa đơn</b> của tất cả các hạng mục?
-                  <br />
-                  <span className="text-[11px] text-rose-700 mt-1 block">
-                    ⚠️ Toàn bộ các mặt hàng đã nhập trong Database SQL Server sẽ được xóa sạch và số tiền đặt lại về 0 để bạn bắt đầu kỳ mới.
-                  </span>
+                  <div>
+                    Bạn có chắc chắn muốn làm sạch thông tin tổng giá của <b>Tháng {selectedMonth}/{selectedYear}</b>?
+                  </div>
+                  <div className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-rose-200">
+                    <div>✓ <b>Toàn bộ {categories.length} hạng mục</b> hóa đơn (Rau, Gas, Keyfood, An Phát...) vẫn được <b>giữ nguyên 100%</b>.</div>
+                    <div>✓ Chỉ làm sạch các mặt hàng chi tiết và đặt số tiền của <b>Tháng {selectedMonth}/{selectedYear}</b> về 0.</div>
+                    <div>✓ <b>Tuyệt đối không ảnh hưởng</b> đến dữ liệu hóa đơn của các tháng khác.</div>
+                  </div>
                 </>
               )}
             </div>

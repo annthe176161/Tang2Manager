@@ -58,23 +58,31 @@ export const employeeApi = {
 };
 
 export const invoiceApi = {
-  getCategories: async () => {
-    const res = await api.get('/invoices/categories');
+  getCategories: async (month = 9, year = 2026) => {
+    const res = await api.get('/invoices/categories', {
+      params: { month, year },
+    });
     return res.data;
   },
 
-  togglePayment: async (id: number) => {
-    const res = await api.put(`/invoices/categories/${id}/toggle-payment`);
+  togglePayment: async (id: number, month = 9, year = 2026) => {
+    const res = await api.put(`/invoices/categories/${id}/toggle-payment`, null, {
+      params: { month, year },
+    });
     return res.data;
   },
 
-  updateCategory: async (id: number, data: any) => {
-    const res = await api.put(`/invoices/categories/${id}`, data);
+  updateCategory: async (id: number, data: any, month = 9, year = 2026) => {
+    const res = await api.put(`/invoices/categories/${id}`, data, {
+      params: { month, year },
+    });
     return res.data;
   },
 
-  getItemsByCategory: async (categoryId: number) => {
-    const res = await api.get(`/invoices/items/${categoryId}`);
+  getItemsByCategory: async (categoryId: number, month = 9, year = 2026) => {
+    const res = await api.get(`/invoices/items/${categoryId}`, {
+      params: { month, year },
+    });
     return res.data;
   },
 
@@ -83,8 +91,10 @@ export const invoiceApi = {
     return res.data;
   },
 
-  createBatchItems: async (items: any[]) => {
-    const res = await api.post('/invoices/items/batch', items);
+  createBatchItems: async (items: any[], month = 9, year = 2026) => {
+    const res = await api.post('/invoices/items/batch', items, {
+      params: { month, year },
+    });
     return res.data;
   },
 
@@ -108,9 +118,9 @@ export const invoiceApi = {
     return res.data;
   },
 
-  clearInvoiceData: async (categoryId?: number) => {
+  clearInvoiceData: async (month: number, year: number, categoryId?: number) => {
     const res = await api.delete('/invoices/clear', {
-      params: categoryId ? { categoryId } : {},
+      params: { month, year, ...(categoryId ? { categoryId } : {}) },
     });
     return res.data;
   },

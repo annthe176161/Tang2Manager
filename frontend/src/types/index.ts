@@ -109,5 +109,7 @@ export interface InvoiceItem {
   totalPayment: number;
   displayOrder: number;
   note?: string;
+  month?: number;
+  year?: number;
 }
 

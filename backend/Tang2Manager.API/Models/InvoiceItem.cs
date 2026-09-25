@@ -21,5 +21,7 @@ public class InvoiceItem
     public decimal TotalPayment { get; set; } = 0; // Tổng thanh toán sau thuế
     public int DisplayOrder { get; set; } = 0;
     public string? Note { get; set; }
+    public int Month { get; set; } = 9;
+    public int Year { get; set; } = 2026;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
