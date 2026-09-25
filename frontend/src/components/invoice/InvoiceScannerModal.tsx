@@ -32,9 +32,11 @@ export interface ScannedItem {
   amount: number;
   totalPayment: number;
   dateStr: string;
+  depositFee?: number;
+  shipFee?: number;
 }
 
-// Template 1: Hóa đơn viết tay rau củ Phùng Bá Tuyển (Ảnh 1)
+// Template 1: Hóa đơn viết tay rau củ Phùng Bá Tuyển (Ảnh 2)
 const SAMPLE_HANDWRITTEN_ITEMS: ScannedItem[] = [
   { id: '1', dateStr: '23/9', itemName: 'Xà lách', unit: 'kg', quantity: 3, unitPrice: 35000, taxRate: 0, taxAmount: 0, amount: 105000, totalPayment: 105000 },
   { id: '2', dateStr: '23/9', itemName: 'Lá nhíp', unit: 'kg', quantity: 0.5, unitPrice: 100000, taxRate: 0, taxAmount: 0, amount: 50000, totalPayment: 50000 },
@@ -54,14 +56,14 @@ const SAMPLE_ONEMARKET_ITEMS: ScannedItem[] = [
   { id: '2', dateStr: '22/9', itemName: 'Nuoc Gao Buoi Sang 1.5L (아침햇살 1.5L*12)', unit: 'chai', quantity: 24, unitPrice: 49000, taxRate: 0, taxAmount: 0, amount: 1176000, totalPayment: 1176000 },
 ];
 
-// Template 3: Hóa đơn NPP AN PHÁT
+// Template 3: Hóa đơn NPP AN PHÁT (Ảnh 4)
 const SAMPLE_ANPHAT_ITEMS: ScannedItem[] = [
   { id: '1', dateStr: '3/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 5.24, unitPrice: 260000, taxRate: 5, taxAmount: 68120, amount: 1362400, totalPayment: 1430520 },
   { id: '2', dateStr: '3/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 2.62, unitPrice: 260000, taxRate: 5, taxAmount: 34060, amount: 681200, totalPayment: 715260 },
   { id: '3', dateStr: '5/9', itemName: 'Ba Chỉ Heo Thái', unit: 'kg', quantity: 3, unitPrice: 125000, taxRate: 5, taxAmount: 18750, amount: 375000, totalPayment: 393750 },
 ];
 
-// Template 4: Hóa đơn NPP KEYFOOD (Phiếu xuất kho Keyfoods Viet 20/9)
+// Template 4: Hóa đơn NPP KEYFOOD (Ảnh 4)
 const SAMPLE_KEYFOOD_ITEMS: ScannedItem[] = [
   {
     id: '1',
@@ -77,9 +79,21 @@ const SAMPLE_KEYFOOD_ITEMS: ScannedItem[] = [
   },
 ];
 
-// Template 5: Hóa đơn Gas
+// Template 5: Hóa đơn Gas du lịch (Ảnh 3)
 const SAMPLE_GAS_ITEMS: ScannedItem[] = [
-  { id: '1', dateStr: '5/9', itemName: 'Bình gas công nghiệp 45kg', unit: 'bình', quantity: 2, unitPrice: 1350000, taxRate: 0, taxAmount: 0, amount: 2700000, totalPayment: 2700000 },
+  { id: '1', dateStr: '5/9', itemName: 'Gas du lịch', unit: 'Thùng', quantity: 2, unitPrice: 450000, taxRate: 0, taxAmount: 0, amount: 900000, totalPayment: 900000, depositFee: 112000 },
+  { id: '2', dateStr: '12/9', itemName: 'Gas du lịch', unit: 'Thùng', quantity: 2, unitPrice: 500000, taxRate: 0, taxAmount: 0, amount: 1000000, totalPayment: 1000000, depositFee: 112000 },
+];
+
+// Template 6: Khấu - Má heo (Ảnh 5)
+const SAMPLE_KHAU_MA_ITEMS: ScannedItem[] = [
+  { id: '1', dateStr: '4/9', itemName: 'Má', unit: 'kg', quantity: 7.9, unitPrice: 170000, taxRate: 0, taxAmount: 0, amount: 1343000, totalPayment: 1343000, shipFee: 0 },
+  { id: '2', dateStr: '11/9', itemName: 'Má', unit: 'kg', quantity: 13.7, unitPrice: 170000, taxRate: 0, taxAmount: 0, amount: 2329000, totalPayment: 2329000, shipFee: 70000 },
+];
+
+// Template 7: Rượu Việt (Ảnh 1)
+const SAMPLE_RUOU_VIET_ITEMS: ScannedItem[] = [
+  { id: '1', dateStr: '1/9', itemName: 'Rượu mơ', unit: 'Can', quantity: 1, unitPrice: 1800000, taxRate: 0, taxAmount: 0, amount: 1800000, totalPayment: 1800000 },
 ];
 
 export const InvoiceScannerModal: React.FC<InvoiceScannerModalProps> = ({
@@ -539,14 +553,13 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
   };
 
   // Quick switch template helper
-  const handleApplyTemplate = (type: 'rau' | 'onemarket' | 'anphat' | 'keyfood' | 'gas') => {
-    if (type === 'onemarket') {
-      setSelectedCatId(10);
-      setSupplierName('ONEMARKET - 원마켓');
-      setReceiptDate('22/9');
-      setScannedItems(SAMPLE_ONEMARKET_ITEMS);
-      setImagePreview('https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=60');
-      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Siêu thị Hàn Quốc ONEMARKET (22/9) - 1.736.000 VNĐ');
+  const handleApplyTemplate = (type: 'rau' | 'onemarket' | 'anphat' | 'keyfood' | 'gas' | 'khau_ma' | 'ruou_viet') => {
+    if (type === 'ruou_viet') {
+      setSelectedCatId(12);
+      setSupplierName('CỬA HÀNG RƯỢU VIỆT');
+      setReceiptDate('1/9');
+      setScannedItems(SAMPLE_RUOU_VIET_ITEMS);
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Rượu Việt (Ảnh 1) - 1.800.000 VNĐ');
     } else if (type === 'rau') {
       setSelectedCatId(1);
       setSupplierName('HKD: PHÙNG BÁ TUYỂN (RAU - CỦ - QUẢ)');
@@ -554,25 +567,38 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
       setScannedItems(SAMPLE_HANDWRITTEN_ITEMS);
       setImagePreview('https://images.unsplash.com/photo-1554415707-9e49fa484cf4?w=800&auto=format&fit=crop&q=60');
       setStatusMessage('✅ Đã nạp mẫu: Hóa đơn viết tay Rau củ Phùng Bá Tuyển (23/9) - 559.000 VNĐ');
+    } else if (type === 'gas') {
+      setSelectedCatId(2);
+      setSupplierName('CỬA HÀNG GAS DU LỊCH');
+      setReceiptDate('5/9');
+      setScannedItems(SAMPLE_GAS_ITEMS);
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Gas du lịch có tiền trả vỏ (Ảnh 3)');
     } else if (type === 'anphat') {
       setSelectedCatId(4);
       setSupplierName('NPP AN PHÁT');
       setReceiptDate('3/9');
       setScannedItems(SAMPLE_ANPHAT_ITEMS);
-      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn NPP AN PHÁT (Thịt Bò Mỹ)');
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn NPP AN PHÁT (Thịt Bò Mỹ - Thuế 5%) (Ảnh 4)');
     } else if (type === 'keyfood') {
       setSelectedCatId(3);
       setSupplierName('CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI QUỐC TẾ KEYGROUP (Keyfoods Viet)');
       setReceiptDate('20/9');
       setScannedItems(SAMPLE_KEYFOOD_ITEMS);
       setImagePreview('https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=800&auto=format&fit=crop&q=60');
-      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn NPP KEYFOOD (Keyfoods Viet 20/9) - 2.785.104 VNĐ');
-    } else if (type === 'gas') {
-      setSelectedCatId(2);
-      setSupplierName('CỬA HÀNG GAS CÔNG NGHIỆP');
-      setReceiptDate('5/9');
-      setScannedItems(SAMPLE_GAS_ITEMS);
-      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Gas công nghiệp - 2.700.000 VNĐ');
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn NPP KEYFOOD (Keyfoods Viet 20/9) - 2.785.104 VNĐ (Ảnh 4)');
+    } else if (type === 'khau_ma') {
+      setSelectedCatId(5);
+      setSupplierName('NPP KHẤU - MÁ HEO');
+      setReceiptDate('4/9');
+      setScannedItems(SAMPLE_KHAU_MA_ITEMS);
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Khấu_Má Heo có tiền Ship (Ảnh 5)');
+    } else if (type === 'onemarket') {
+      setSelectedCatId(10);
+      setSupplierName('ONEMARKET - 원마켓');
+      setReceiptDate('22/9');
+      setScannedItems(SAMPLE_ONEMARKET_ITEMS);
+      setImagePreview('https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=60');
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Siêu thị Hàn Quốc ONEMARKET (22/9) - 1.736.000 VNĐ');
     }
   };
 
@@ -606,13 +632,15 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
       id: String(Date.now()),
       dateStr: receiptDate,
       itemName: '',
-      unit: 'kg',
+      unit: selectedCatId === 12 ? 'Can' : (selectedCatId === 2 ? 'Thùng' : 'kg'),
       quantity: 1,
       unitPrice: 0,
-      taxRate: 0,
+      taxRate: selectedCatId === 4 ? 5 : 0,
       taxAmount: 0,
       amount: 0,
       totalPayment: 0,
+      depositFee: 0,
+      shipFee: 0,
     };
     setScannedItems((prev) => [...prev, newItem]);
   };
@@ -635,6 +663,8 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
       taxAmount: it.taxAmount,
       amount: it.amount,
       totalPayment: it.totalPayment,
+      depositFee: it.depositFee || 0,
+      shipFee: it.shipFee || 0,
       displayOrder: idx + 1,
       note: supplierName,
     }));
@@ -693,42 +723,56 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
         <div className="bg-slate-100 border-b border-slate-200 p-2.5 px-4 flex items-center gap-2 overflow-x-auto text-xs">
           <span className="font-bold text-slate-600 flex items-center gap-1 shrink-0">
             <Zap className="w-3.5 h-3.5 text-amber-600" />
-            <span>Chọn nhanh mẫu hóa đơn:</span>
+            <span>Mẫu hóa đơn gốc:</span>
           </span>
           <button
             type="button"
-            onClick={() => handleApplyTemplate('onemarket')}
+            onClick={() => handleApplyTemplate('ruou_viet')}
             className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
           >
-            <span>🛒 ONEMARKET Hàn Quốc (22/9)</span>
+            <span>🍷 Rượu Việt (Ảnh 1)</span>
           </button>
           <button
             type="button"
             onClick={() => handleApplyTemplate('rau')}
             className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
           >
-            <span>🥬 Rau củ Phùng Bá Tuyển (23/9)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleApplyTemplate('anphat')}
-            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
-          >
-            <span>🥩 NPP AN PHÁT</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleApplyTemplate('keyfood')}
-            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
-          >
-            <span>🥩 NPP KEYFOOD (20/9)</span>
+            <span>🥬 Rau củ (Ảnh 2)</span>
           </button>
           <button
             type="button"
             onClick={() => handleApplyTemplate('gas')}
             className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
           >
-            <span>🔥 Hóa đơn Gas</span>
+            <span>🔥 Gas du lịch (Ảnh 3)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyTemplate('anphat')}
+            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
+          >
+            <span>🥩 NPP AN PHÁT (Ảnh 4)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyTemplate('keyfood')}
+            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
+          >
+            <span>🥩 NPP KEYFOOD (Ảnh 4)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyTemplate('khau_ma')}
+            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
+          >
+            <span>🐷 Khấu_Má Heo (Ảnh 5)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyTemplate('onemarket')}
+            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
+          >
+            <span>🛒 ONEMARKET</span>
           </button>
         </div>
 
@@ -922,6 +966,12 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                     <th className="py-2 px-2 text-center w-16 border border-blue-400">Đơn vị</th>
                     <th className="py-2 px-2 text-center w-16 border border-blue-400">SL</th>
                     <th className="py-2 px-2 text-center w-24 border border-blue-400">Đơn Giá</th>
+                    {selectedCatId === 2 && (
+                      <th className="py-2 px-2 text-center w-24 border border-blue-400 bg-emerald-600">Tiền Trả Vỏ</th>
+                    )}
+                    {selectedCatId === 5 && (
+                      <th className="py-2 px-2 text-center w-20 border border-blue-400 bg-emerald-600">Tiền Ship</th>
+                    )}
                     <th className="py-2 px-2 text-center w-28 border border-blue-400">Thành Tiền</th>
                     <th className="py-2 px-1 text-center w-10 border border-blue-400">Xóa</th>
                   </tr>
@@ -929,7 +979,7 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                 <tbody>
                   {scannedItems.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 text-xs italic">
+                      <td colSpan={selectedCatId === 2 || selectedCatId === 5 ? 8 : 7} className="py-12 text-center text-slate-400 text-xs italic">
                         Chưa có dữ liệu. Vui lòng tải ảnh hóa đơn ở cột bên trái hoặc chọn mẫu ở thanh công cụ!
                       </td>
                     </tr>
@@ -973,6 +1023,30 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                             className="w-full px-1.5 py-1 text-right rounded border border-slate-200 hover:border-blue-400 font-bold text-slate-900 focus:outline-hidden"
                           />
                         </td>
+                        {selectedCatId === 2 && (
+                          <td className="py-1 px-1">
+                            <input
+                              type="number"
+                              step="1000"
+                              value={item.depositFee || ''}
+                              onChange={(e) => handleItemChange(item.id, 'depositFee', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-1.5 py-1 text-right rounded border border-emerald-300 font-bold text-emerald-900 focus:outline-hidden"
+                            />
+                          </td>
+                        )}
+                        {selectedCatId === 5 && (
+                          <td className="py-1 px-1">
+                            <input
+                              type="number"
+                              step="1000"
+                              value={item.shipFee || ''}
+                              onChange={(e) => handleItemChange(item.id, 'shipFee', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-1.5 py-1 text-right rounded border border-emerald-300 font-bold text-emerald-900 focus:outline-hidden"
+                            />
+                          </td>
+                        )}
                         <td className="py-1 px-2 text-right font-black text-emerald-800">
                           {item.totalPayment.toLocaleString('vi-VN')}
                         </td>

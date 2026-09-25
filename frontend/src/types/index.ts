@@ -107,6 +107,8 @@ export interface InvoiceItem {
   taxAmount: number;
   amount: number;
   totalPayment: number;
+  depositFee?: number;
+  shipFee?: number;
   displayOrder: number;
   note?: string;
   month?: number;

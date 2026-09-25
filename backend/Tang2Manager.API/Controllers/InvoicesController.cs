@@ -175,16 +175,16 @@ public class InvoicesController : ControllerBase
         if (item.Month <= 0) item.Month = 9;
         if (item.Year <= 0) item.Year = 2026;
 
-        item.Amount = item.Quantity * item.UnitPrice;
+        item.Amount = item.Amount > 0 ? item.Amount : (item.Quantity * item.UnitPrice);
         if (item.TaxRate > 0)
         {
-            item.TaxAmount = Math.Round(item.Amount * (item.TaxRate / 100m));
-            item.TotalPayment = item.Amount + item.TaxAmount;
+            item.TaxAmount = item.TaxAmount > 0 ? item.TaxAmount : Math.Round(item.Amount * (item.TaxRate / 100m));
+            item.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : (item.Amount + item.TaxAmount);
         }
         else
         {
             item.TaxAmount = 0;
-            item.TotalPayment = item.Amount;
+            item.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : item.Amount;
         }
         item.CreatedAt = DateTime.UtcNow;
 
@@ -203,16 +203,16 @@ public class InvoicesController : ControllerBase
             item.Id = 0;
             item.Month = item.Month > 0 ? item.Month : month;
             item.Year = item.Year > 0 ? item.Year : year;
-            item.Amount = item.Quantity * item.UnitPrice;
+            item.Amount = item.Amount > 0 ? item.Amount : (item.Quantity * item.UnitPrice);
             if (item.TaxRate > 0)
             {
-                item.TaxAmount = Math.Round(item.Amount * (item.TaxRate / 100m));
-                item.TotalPayment = item.Amount + item.TaxAmount;
+                item.TaxAmount = item.TaxAmount > 0 ? item.TaxAmount : Math.Round(item.Amount * (item.TaxRate / 100m));
+                item.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : (item.Amount + item.TaxAmount);
             }
             else
             {
                 item.TaxAmount = 0;
-                item.TotalPayment = item.Amount;
+                item.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : item.Amount;
             }
             item.CreatedAt = DateTime.UtcNow;
             _context.InvoiceItems.Add(item);
@@ -236,19 +236,21 @@ public class InvoicesController : ControllerBase
         existing.Quantity = item.Quantity;
         existing.UnitPrice = item.UnitPrice;
         existing.TaxRate = item.TaxRate;
+        existing.DepositFee = item.DepositFee;
+        existing.ShipFee = item.ShipFee;
         existing.Note = item.Note;
 
-        // Auto-recalculate
-        existing.Amount = existing.Quantity * existing.UnitPrice;
+        // Auto-recalculate or use provided
+        existing.Amount = item.Amount > 0 ? item.Amount : (existing.Quantity * existing.UnitPrice);
         if (existing.TaxRate > 0)
         {
-            existing.TaxAmount = Math.Round(existing.Amount * (existing.TaxRate / 100m));
-            existing.TotalPayment = existing.Amount + existing.TaxAmount;
+            existing.TaxAmount = item.TaxAmount > 0 ? item.TaxAmount : Math.Round(existing.Amount * (existing.TaxRate / 100m));
+            existing.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : (existing.Amount + existing.TaxAmount);
         }
         else
         {
             existing.TaxAmount = 0;
-            existing.TotalPayment = existing.Amount;
+            existing.TotalPayment = item.TotalPayment > 0 ? item.TotalPayment : existing.Amount;
         }
 
         await _context.SaveChangesAsync();

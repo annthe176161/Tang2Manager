@@ -19,6 +19,8 @@ public class InvoiceItem
     public decimal TaxAmount { get; set; } = 0;
     public decimal Amount { get; set; } = 0; // Thành tiền trước thuế
     public decimal TotalPayment { get; set; } = 0; // Tổng thanh toán sau thuế
+    public decimal DepositFee { get; set; } = 0; // Tiền trả vỏ (Gas)
+    public decimal ShipFee { get; set; } = 0; // Phí ship (Khấu_Má)
     public int DisplayOrder { get; set; } = 0;
     public string? Note { get; set; }
     public int Month { get; set; } = 9;
