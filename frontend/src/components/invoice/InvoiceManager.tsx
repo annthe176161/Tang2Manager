@@ -999,7 +999,7 @@ export const InvoiceManager: React.FC = () => {
                   NNP KEYFOOD
                 </div>
               ) : activeCategory.id === 12 || activeCategory.name.includes('베트남 술') ? (
-                // Green Rượu Việt Header Tab (Khớp Ảnh 1)
+                // Green Rượu Việt Header Tab (Khớp Ảnh 1 đợt 1)
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
                     <span>Rượu Việt</span>
@@ -1008,7 +1008,7 @@ export const InvoiceManager: React.FC = () => {
                   </div>
                 </div>
               ) : activeCategory.id === 2 || activeCategory.name.includes('가스') ? (
-                // Green Gas du lịch Header Tab (Khớp Ảnh 3)
+                // Green Gas du lịch Header Tab (Khớp Ảnh 3 đợt 1)
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
                     <span>Gas du lịch</span>
@@ -1017,13 +1017,54 @@ export const InvoiceManager: React.FC = () => {
                   </div>
                 </div>
               ) : activeCategory.id === 5 || activeCategory.name.includes('막창') ? (
-                // Green Khấu_Má Header Tab (Khớp Ảnh 5)
+                // Green Khấu_Má Header Tab (Khớp Ảnh 5 đợt 1)
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
                     <span>Khấu_Má</span>
                     <span className="text-[10px] opacity-80">▼</span>
                     <span>🧮</span>
                   </div>
+                </div>
+              ) : activeCategory.id === 10 || activeCategory.name.includes('원마켓') ? (
+                // Green One Market Header Tab (Khớp Ảnh 1 đợt 2)
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                    <span>One Market</span>
+                    <span className="text-[10px] opacity-80">▼</span>
+                    <span>🧮</span>
+                  </div>
+                </div>
+              ) : activeCategory.id === 6 || activeCategory.name.includes('과일') ? (
+                // Green Rượu Soju hoa quả Header Tab (Khớp Ảnh 2 đợt 2)
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                    <span>Rượu Soju hoa quả</span>
+                    <span className="text-[10px] opacity-80">▼</span>
+                    <span>🧮</span>
+                  </div>
+                </div>
+              ) : activeCategory.id === 8 || activeCategory.name.includes('고사리') ? (
+                // Green Dương sỉ _ Bột ớt Header Tab (Khớp Ảnh 3 đợt 2)
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                    <span>Dương sỉ _ Bột ớt</span>
+                    <span className="text-[10px] opacity-80">▼</span>
+                    <span>🧮</span>
+                  </div>
+                </div>
+              ) : activeCategory.id === 7 || activeCategory.name.includes('옥수수') ? (
+                // Green Ngô hộp Header Tab (Khớp Ảnh 4 đợt 2)
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                    <span>Ngô hộp</span>
+                    <span className="text-[10px] opacity-80">▼</span>
+                    <span>🧮</span>
+                  </div>
+                </div>
+              ) : activeCategory.id === 9 || activeCategory.name.includes('음료수') ? (
+                // Blue Đồ uống Banner (Khớp Ảnh 5 đợt 2)
+                <div className="inline-block bg-[#3b82f6] text-white px-4 py-1 font-bold text-sm rounded-md mb-2">
+                  HÓA ĐƠN: ĐỒ UỐNG & NƯỚC NGỌT (음료수)
                 </div>
               ) : (
                 <div className="inline-block bg-emerald-800 text-white px-4 py-1 font-bold text-sm rounded-md mb-2">
@@ -1513,6 +1554,543 @@ export const InvoiceManager: React.FC = () => {
                   </tr>
                 </tbody>
               </table>
+            ) : activeCategory.id === 10 || activeCategory.name.includes('원마켓') ? (
+              // CASE F: ONE MARKET (Khớp 100% Ảnh 1 đợt 2)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#245839] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Ngày (일자)</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[280px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Mã vạch / Tên hàng hóa (품목 (규격))</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Số lượng (수량)</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Đơn giá (단가)</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Thành tiền (금액)</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Thuế (세액)</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center bg-[#ffff00] text-black font-black min-w-[130px]">
+                      Tổng cộng (합계)
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center bg-[#ff0000] text-white font-black min-w-[130px]">
+                      Tổng tháng
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedDailyItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu One Market trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    groupedDailyItems.map((group, groupIdx) => (
+                      <React.Fragment key={group.dateStr || groupIdx}>
+                        {group.items.map((item, itemIdx) => (
+                          <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                            <td className="border border-gray-500 py-2 px-3 text-center font-bold text-gray-900">
+                              {itemIdx === 0 ? item.dateStr : ''}
+                            </td>
+                            <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">
+                              {item.itemName}
+                            </td>
+                            <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                              {String(item.quantity).replace('.', ',')}
+                            </td>
+                            <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                              {item.unitPrice.toLocaleString('vi-VN')}
+                            </td>
+                            <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900">
+                              {item.amount.toLocaleString('vi-VN')}
+                            </td>
+                            <td className="border border-gray-500 py-2 px-2 text-center font-bold">
+                              {item.taxAmount > 0 ? item.taxAmount.toLocaleString('vi-VN') : 0}
+                            </td>
+                            {/* Cột Tổng cộng (합계) của ngày hiển thị ở hàng cuối cùng của ngày */}
+                            {itemIdx === group.items.length - 1 ? (
+                              <td className="border border-gray-500 py-2 px-4 text-center font-black text-gray-900 bg-[#ffff00]/30">
+                                {group.dayTotal.toLocaleString('vi-VN')}
+                              </td>
+                            ) : (
+                              <td className="border border-gray-500 py-2 px-4 text-center bg-white"></td>
+                            )}
+                            {/* Cột Tổng tháng hiển thị rowSpan ở hàng đầu tiên của bảng */}
+                            {groupIdx === 0 && itemIdx === 0 ? (
+                              <td
+                                rowSpan={currentItems.length}
+                                className="border border-gray-500 py-2 px-4 text-center font-black text-black bg-[#ffff00] text-base align-middle"
+                              >
+                                {activeCategoryTotal.toLocaleString('vi-VN')}
+                              </td>
+                            ) : null}
+                            <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEditModal(item)}
+                                  className="p-1 hover:text-blue-600 rounded text-slate-500"
+                                  title="Sửa"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  className="p-1 hover:text-red-600 rounded text-slate-500"
+                                  title="Xóa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : activeCategory.id === 6 || activeCategory.name.includes('과일') ? (
+              // CASE G: RƯỢU SOJU HOA QUẢ (Khớp 100% Ảnh 2 đợt 2)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#245839] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-14">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>STT</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[180px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Danh mục sản phẩm</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[200px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Sản phẩm</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐVT</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Số lượng</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Đơn giá</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Tổng thành tiền</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu Soju hoa quả trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
+                        <td className="border border-gray-500 py-2 px-4 text-left font-semibold text-gray-700">{item.note || 'Soju hoa quả'}</td>
+                        <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-semibold">{item.unit || 'Chai'}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {String(item.quantity).replace('.', ',')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {item.unitPrice.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900">
+                          {item.amount.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1 hover:text-blue-600 rounded text-slate-500"
+                              title="Sửa"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 hover:text-red-600 rounded text-slate-500"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+
+                  {/* Hàng Tổng (Khớp Ô ĐỎ Tổng & Ô VÀNG ở Ảnh 2) */}
+                  <tr className="bg-white font-black text-sm">
+                    <td colSpan={5} className="border-0 py-2"></td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ff0000] text-black font-black text-base">
+                      Tổng
+                    </td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ffff00] text-black font-black text-base">
+                      {activeCategoryTotal.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude"></td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : activeCategory.id === 8 || activeCategory.name.includes('고사리') ? (
+              // CASE H: DƯƠNG SỈ _ BỘT ỚT (Khớp 100% Ảnh 3 đợt 2)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#245839] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>NGÀY</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[240px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>TÊN MẶT HÀNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>SỐ LƯỢNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐƠN GIÁ</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>THÀNH TIỀN</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu Dương sỉ _ Bột ớt trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold text-gray-900">{item.dateStr}</td>
+                        <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {String(item.quantity).replace('.', ',')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {item.unitPrice.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900">
+                          {item.amount.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1 hover:text-blue-600 rounded text-slate-500"
+                              title="Sửa"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 hover:text-red-600 rounded text-slate-500"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+
+                  {/* Hàng Tổng (Khớp Ô ĐỎ Tổng & Ô VÀNG ở Ảnh 3) */}
+                  <tr className="bg-white font-black text-sm">
+                    <td colSpan={3} className="border-0 py-2"></td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ff0000] text-black font-black text-base">
+                      Tổng
+                    </td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ffff00] text-black font-black text-base">
+                      {activeCategoryTotal.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude"></td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : activeCategory.id === 7 || activeCategory.name.includes('옥수수') ? (
+              // CASE I: NGÔ HỘP (Khớp 100% Ảnh 4 đợt 2)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#245839] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-14">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>STT</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>NGÀY</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>MÃ HÀNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[200px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>TÊN HÀNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐƠN VỊ</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>SỐ LƯỢNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐƠN GIÁ</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>THÀNH TIỀN</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu Ngô hộp trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-semibold text-slate-700">{item.note || '671'}</td>
+                        <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-semibold">{item.unit || 'Hộp'}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {String(item.quantity).replace('.', ',')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {item.unitPrice.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900">
+                          {item.amount.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1 hover:text-blue-600 rounded text-slate-500"
+                              title="Sửa"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 hover:text-red-600 rounded text-slate-500"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+
+                  {/* Hàng Tổng (Khớp Ô ĐỎ Tổng & Ô VÀNG ở Ảnh 4) */}
+                  <tr className="bg-white font-black text-sm">
+                    <td colSpan={6} className="border-0 py-2"></td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ff0000] text-black font-black text-base">
+                      Tổng
+                    </td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ffff00] text-black font-black text-base">
+                      {activeCategoryTotal.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude"></td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : activeCategory.id === 9 || activeCategory.name.includes('음료수') ? (
+              // CASE J: ĐỒ UỐNG & NƯỚC NGỌT (Khớp 100% Ảnh 5 đợt 2)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#3b82f6] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">NGÀY</th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[260px]">TÊN SẢN PHẨM</th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">SỐ LƯỢNG</th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-20">%VAT</th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[160px]">GHI CHÚ</th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">ĐƠN GIÁ</th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">THÀNH TIỀN</th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center bg-[#ff0000] text-white min-w-[130px]">
+                      TỔNG TIỀN
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu Đồ uống trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-blue-50/50 transition">
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr || ''}</td>
+                        <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {String(item.quantity).replace('.', ',')}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-2 text-center font-bold">
+                          {item.taxRate > 0 ? `${item.taxRate}%` : ''}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-4 text-left text-xs text-slate-600">{item.note || ''}</td>
+                        <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                          {item.unitPrice > 0 ? item.unitPrice.toLocaleString('vi-VN') : '0'}
+                        </td>
+                        <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-blue-900">
+                          {item.amount > 0 ? item.amount.toLocaleString('vi-VN') : ''}
+                        </td>
+                        {idx === currentItems.length - 1 ? (
+                          <td
+                            rowSpan={1}
+                            className="border border-gray-500 py-2 px-4 text-center font-black text-gray-900 bg-white"
+                          >
+                            {activeCategoryTotal.toLocaleString('vi-VN')}
+                          </td>
+                        ) : (
+                          <td className="border border-gray-500 py-2 px-4 text-center bg-white"></td>
+                        )}
+                        <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1 hover:text-blue-600 rounded text-slate-500"
+                              title="Sửa"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 hover:text-red-600 rounded text-slate-500"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+
+                  {/* Hàng Tổng (Khớp Ô ĐỎ Tổng & Ô TRẮNG ở Ảnh 5) */}
+                  <tr className="bg-white font-black text-sm">
+                    <td colSpan={6} className="border-0 py-2"></td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ff0000] text-white font-black text-base">
+                      Tổng
+                    </td>
+                    <td className="border border-gray-500 py-2 px-4 text-center font-black text-gray-900 bg-white text-base">
+                      {activeCategoryTotal.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude"></td>
+                  </tr>
+                </tbody>
+              </table>
             ) : (
               // CASE C: CHI TIẾT THEO NGÀY (Khớp 100% Ảnh 2 - Rau củ / Chi tiêu ngày)
               <table className="w-full border-collapse border-2 border-gray-600 text-sm">
@@ -1755,6 +2333,59 @@ export const InvoiceManager: React.FC = () => {
                     value={editingItem.note || ''}
                     onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
                     placeholder="30L"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                  />
+                </div>
+              )}
+
+              {(activeCategoryId === 7 || activeCategory?.name.includes('옥수수')) && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Mã hàng (VD: 671):</label>
+                  <input
+                    type="text"
+                    value={editingItem.note || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
+                    placeholder="671"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                  />
+                </div>
+              )}
+
+              {(activeCategoryId === 9 || activeCategory?.name.includes('음료수')) && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú (VD: chuong trinh coke 28 lon):</label>
+                  <input
+                    type="text"
+                    value={editingItem.note || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
+                    placeholder="chuong trinh coke 28 lon"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                  />
+                </div>
+              )}
+
+              {(activeCategoryId === 6 || activeCategory?.name.includes('과일')) && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Danh mục sản phẩm:</label>
+                  <input
+                    type="text"
+                    value={editingItem.note || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, note: e.target.value })}
+                    placeholder="Soju hoa quả"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+                  />
+                </div>
+              )}
+
+              {(activeCategoryId === 10 || activeCategory?.name.includes('원마켓')) && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tiền thuế (세액 - VNĐ):</label>
+                  <input
+                    type="number"
+                    step="1000"
+                    value={editingItem.taxAmount || 0}
+                    onChange={(e) => setEditingItem({ ...editingItem, taxAmount: parseFloat(e.target.value) || 0 })}
+                    placeholder="0"
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
                   />
                 </div>
