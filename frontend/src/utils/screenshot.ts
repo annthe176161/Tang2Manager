@@ -68,3 +68,38 @@ export async function copyScheduleImageToClipboard(element: HTMLElement): Promis
     throw error;
   }
 }
+
+export async function captureElementToBlob(element: HTMLElement, pixelRatio = 2.5): Promise<Blob | null> {
+  try {
+    const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, element.clientWidth);
+    const fullHeight = Math.max(element.scrollHeight, element.offsetHeight, element.clientHeight);
+    return await toBlob(element, {
+      quality: 0.95,
+      pixelRatio,
+      backgroundColor: '#ffffff',
+      cacheBust: true,
+      width: fullWidth,
+      height: fullHeight,
+      style: {
+        overflow: 'visible',
+        maxWidth: 'none',
+        width: `${fullWidth}px`,
+      },
+      filter: (node: Node) => {
+        if (node instanceof HTMLElement) {
+          if (
+            node.classList.contains('print:hidden') ||
+            node.classList.contains('screenshot-exclude')
+          ) {
+            return false;
+          }
+        }
+        return true;
+      },
+    });
+  } catch (error) {
+    console.error('Lỗi chụp blob phần tử:', error);
+    return null;
+  }
+}
+
