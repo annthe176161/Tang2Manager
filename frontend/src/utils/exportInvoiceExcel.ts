@@ -202,69 +202,114 @@ export const exportInvoiceToExcel = (
       const activeItems = categoryItems[activeCat.id] || [];
       const cleanName = activeCat.name.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 25);
       
+      const isDetergent = activeCat.id === 11 || activeCat.name.includes('주방세제') || activeCat.name.includes('Nước rửa') || activeCat.name.includes('lau sàn');
+      
       const sheet3Data: (string | number)[][] = [
         [`NHÀ HÀNG TẦNG 2 - BẢNG KÊ CHI TIẾT HÓA ĐƠN: ${activeCat.name.toUpperCase()}`],
         [`Kỳ hạch toán: Tháng ${month} năm ${year} | Trạng thái: ${activeCat.isPaid ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN'}`],
         [''],
-        [
-          'STT',
-          'Ngày',
-          'Tên Mặt Hàng',
-          'Đơn Vị Tính',
-          'Số Lượng',
-          'Đơn Giá (VNĐ)',
-          'Thuế Suất (%)',
-          'Tiền Thuế GTGT (VNĐ)',
-          'Thành Tiền (VNĐ)',
-          'Tổng Thanh Toán (VNĐ)',
-          'Ghi Chú',
-        ],
+        isDetergent
+          ? [
+              'STT',
+              'NGÀY',
+              'TÊN HÀNG',
+              'ĐVT',
+              'SỐ LƯỢNG',
+              'ĐƠN GIÁ (VNĐ)',
+              '# THÀNH TIỀN (VNĐ)',
+              'Trả vỏ (VNĐ)',
+              'Tổng (VNĐ)',
+            ]
+          : [
+              'STT',
+              'Ngày',
+              'Tên Mặt Hàng',
+              'Đơn Vị Tính',
+              'Số Lượng',
+              'Đơn Giá (VNĐ)',
+              'Thuế Suất (%)',
+              'Tiền Thuế GTGT (VNĐ)',
+              'Thành Tiền (VNĐ)',
+              'Tổng Thanh Toán (VNĐ)',
+              'Ghi Chú',
+            ],
       ];
 
       let subTotalQty = 0;
       let subTotalTax = 0;
       let subTotalAmt = 0;
       let subTotalPay = 0;
+      let subTotalDeposit = 0;
 
       activeItems.forEach((item, idx) => {
         const qty = Number(item.quantity) || 0;
         const tax = Number(item.taxAmount) || 0;
         const amt = Number(item.amount) || 0;
-        const pay = Number(item.totalPayment) || amt;
+        const deposit = Number(item.depositFee) || 0;
+        const pay = Number(item.totalPayment) || (deposit > 0 ? amt - deposit : amt);
 
         subTotalQty += qty;
         subTotalTax += tax;
         subTotalAmt += amt;
         subTotalPay += pay;
+        subTotalDeposit += deposit;
 
-        sheet3Data.push([
-          idx + 1,
-          item.dateStr || '',
-          item.itemName,
-          item.unit || 'kg',
-          qty,
-          item.unitPrice,
-          item.taxRate ? `${item.taxRate}%` : '0%',
-          tax > 0 ? tax : 0,
-          amt,
-          pay,
-          item.note || '',
-        ]);
+        if (isDetergent) {
+          sheet3Data.push([
+            idx + 1,
+            item.dateStr || '',
+            item.itemName,
+            item.unit || 'Can',
+            qty,
+            item.unitPrice,
+            amt,
+            deposit > 0 ? deposit : '',
+            pay,
+          ]);
+        } else {
+          sheet3Data.push([
+            idx + 1,
+            item.dateStr || '',
+            item.itemName,
+            item.unit || 'kg',
+            qty,
+            item.unitPrice,
+            item.taxRate ? `${item.taxRate}%` : '0%',
+            tax > 0 ? tax : 0,
+            amt,
+            pay,
+            item.note || '',
+          ]);
+        }
       });
 
-      sheet3Data.push([
-        'TỔNG CỘNG',
-        '',
-        `${activeItems.length} mặt hàng`,
-        '',
-        Math.round(subTotalQty * 100) / 100,
-        '',
-        '',
-        subTotalTax,
-        subTotalAmt,
-        subTotalPay > 0 ? subTotalPay : getCatTotal(activeCat),
-        '',
-      ]);
+      if (isDetergent) {
+        sheet3Data.push([
+          'TỔNG CỘNG',
+          '',
+          `${activeItems.length} mặt hàng`,
+          '',
+          Math.round(subTotalQty * 100) / 100,
+          '',
+          subTotalAmt,
+          subTotalDeposit > 0 ? subTotalDeposit : '',
+          subTotalPay > 0 ? subTotalPay : getCatTotal(activeCat),
+        ]);
+      } else {
+        sheet3Data.push([
+          'TỔNG CỘNG',
+          '',
+          `${activeItems.length} mặt hàng`,
+          '',
+          Math.round(subTotalQty * 100) / 100,
+          '',
+          '',
+          subTotalTax,
+          subTotalAmt,
+          subTotalPay > 0 ? subTotalPay : getCatTotal(activeCat),
+          '',
+        ]);
+      }
 
       sheet3Data.push(
         [''],

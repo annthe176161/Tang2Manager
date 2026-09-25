@@ -214,7 +214,7 @@ export const InvoiceManager: React.FC = () => {
       categoryId: activeCategoryId,
       dateStr: '1/9',
       itemName: '',
-      unit: activeCategoryId === 12 ? 'Can' : (activeCategoryId === 2 ? 'Thùng' : (activeCategory?.categoryType === 'Supplier' ? 'kg' : '')),
+      unit: activeCategoryId === 12 || activeCategoryId === 11 || activeCategory?.name.includes('주방세제') || activeCategory?.name.includes('Nước rửa') ? 'Can' : (activeCategoryId === 2 ? 'Thùng' : (activeCategory?.categoryType === 'Supplier' ? 'kg' : '')),
       quantity: 1,
       unitPrice: 0,
       taxRate: activeCategoryId === 4 ? 5 : 0, // An Phát có thuế 5%
@@ -239,7 +239,13 @@ export const InvoiceManager: React.FC = () => {
     const shipF = Number(editingItem.shipFee) || 0;
     const amount = qty * price;
     const taxAmount = taxR > 0 ? Math.round(amount * (taxR / 100)) : 0;
-    const totalPayment = amount + taxAmount;
+    let totalPayment = amount + taxAmount;
+    if (depositF > 0) {
+      totalPayment = amount - depositF;
+    }
+    if (shipF > 0) {
+      totalPayment = amount + shipF;
+    }
 
     const itemToSave: InvoiceItem = {
       id: isNewItem ? 0 : (editingItem.id || 0),
@@ -1065,6 +1071,15 @@ export const InvoiceManager: React.FC = () => {
                 // Blue Đồ uống Banner (Khớp Ảnh 5 đợt 2)
                 <div className="inline-block bg-[#3b82f6] text-white px-4 py-1 font-bold text-sm rounded-md mb-2">
                   HÓA ĐƠN: ĐỒ UỐNG & NƯỚC NGỌT (음료수)
+                </div>
+              ) : activeCategory.id === 11 || activeCategory.name.includes('주방세제') || activeCategory.name.includes('Nước rửa') || activeCategory.name.includes('lau sàn') ? (
+                // Green Nước rửa bát_Nước lau sàn Header Tab (Khớp 100% Ảnh người dùng vừa gửi)
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
+                    <span>Nước rửa bát_Nước lau sàn</span>
+                    <span className="text-[10px] opacity-80">▼</span>
+                    <span>🧮</span>
+                  </div>
                 </div>
               ) : (
                 <div className="inline-block bg-emerald-800 text-white px-4 py-1 font-bold text-sm rounded-md mb-2">
@@ -2091,6 +2106,144 @@ export const InvoiceManager: React.FC = () => {
                   </tr>
                 </tbody>
               </table>
+            ) : activeCategory.id === 11 || activeCategory.name.includes('주방세제') || activeCategory.name.includes('Nước rửa') || activeCategory.name.includes('lau sàn') ? (
+              // CASE L: NƯỚC RỬA BÁT _ NƯỚC LAU SÀN (Khớp 100% Ảnh người dùng vừa gửi)
+              <table className="w-full border-collapse border-2 border-gray-600 text-sm">
+                <thead>
+                  <tr className="bg-[#235c43] text-white font-extrabold select-none">
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-14">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>STT</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>📅 NGÀY</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[200px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>TÊN HÀNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-20">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐVT</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-24">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>SỐ LƯỢNG</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center w-28">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>ĐƠN GIÁ</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span># THÀNH TIỀN</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-3 text-center min-w-[120px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Trả vỏ</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-4 text-center min-w-[140px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Tổng</span>
+                        <span className="text-[10px] opacity-75">▼</span>
+                      </div>
+                    </th>
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="border border-gray-400 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu Nước rửa bát - Nước lau sàn trong tháng. Bấm "Quét AI Hóa Đơn" hoặc "Thêm Mặt Hàng" để nhập.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((item, idx) => {
+                      const finalItemTotal = item.totalPayment > 0 ? item.totalPayment : (item.amount - (item.depositFee || 0));
+                      return (
+                        <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                          <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
+                          <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
+                          <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
+                          <td className="border border-gray-500 py-2 px-3 text-center font-semibold">{item.unit || 'Can'}</td>
+                          <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                            {String(item.quantity).replace('.', ',')}
+                          </td>
+                          <td className="border border-gray-500 py-2 px-3 text-center font-bold">
+                            {item.unitPrice.toLocaleString('vi-VN')}
+                          </td>
+                          <td className="border border-gray-500 py-2 px-4 text-center font-bold text-gray-900">
+                            {item.amount.toLocaleString('vi-VN')}
+                          </td>
+                          <td className="border border-gray-500 py-2 px-3 text-center font-semibold text-rose-600">
+                            {(item.depositFee || 0) > 0 ? (item.depositFee || 0).toLocaleString('vi-VN') : ''}
+                          </td>
+                          <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900">
+                            {finalItemTotal.toLocaleString('vi-VN')}
+                          </td>
+                          <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="p-1 hover:text-blue-600 rounded text-slate-500"
+                                title="Sửa"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="p-1 hover:text-red-600 rounded text-slate-500"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+
+                  {/* Hàng Tổng (Khớp Ô ĐỎ Tổng & Ô VÀNG Thành Tiền) */}
+                  <tr className="bg-white font-black text-sm">
+                    <td colSpan={6} className="border-0 py-2"></td>
+                    <td className="border border-gray-500 py-2 px-4 text-center font-extrabold text-gray-900 bg-slate-50">
+                      {currentItems.reduce((s, i) => s + (i.amount || 0), 0) > 0
+                        ? currentItems.reduce((s, i) => s + (i.amount || 0), 0).toLocaleString('vi-VN')
+                        : ''}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-3 text-center font-bold text-rose-700 bg-slate-50">
+                      {currentItems.reduce((s, i) => s + (i.depositFee || 0), 0) > 0
+                        ? currentItems.reduce((s, i) => s + (i.depositFee || 0), 0).toLocaleString('vi-VN')
+                        : ''}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-4 text-center bg-[#ffff00] text-black font-black text-base">
+                      {activeCategoryTotal.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude"></td>
+                  </tr>
+                </tbody>
+              </table>
             ) : (
               // CASE C: CHI TIẾT THEO NGÀY (Khớp 100% Ảnh 2 - Rau củ / Chi tiêu ngày)
               <table className="w-full border-collapse border-2 border-gray-600 text-sm">
@@ -2297,15 +2450,15 @@ export const InvoiceManager: React.FC = () => {
                 </div>
               )}
 
-              {(activeCategoryId === 2 || activeCategory?.name.includes('가스')) && (
+              {(activeCategoryId === 2 || activeCategory?.name.includes('가스') || activeCategoryId === 11 || activeCategory?.name.includes('주방세제') || activeCategory?.name.includes('Nước rửa') || activeCategory?.name.includes('lau sàn')) && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Tiền trả vỏ (VNĐ):</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tiền trả vỏ can / bình (VNĐ):</label>
                   <input
                     type="number"
                     step="1000"
                     value={editingItem.depositFee || ''}
                     onChange={(e) => setEditingItem({ ...editingItem, depositFee: parseFloat(e.target.value) || 0 })}
-                    placeholder="112000"
+                    placeholder="VD: 40000"
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
                   />
                 </div>

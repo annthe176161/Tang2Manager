@@ -96,6 +96,12 @@ const SAMPLE_RUOU_VIET_ITEMS: ScannedItem[] = [
   { id: '1', dateStr: '1/9', itemName: 'Rượu mơ', unit: 'Can', quantity: 1, unitPrice: 1800000, taxRate: 0, taxAmount: 0, amount: 1800000, totalPayment: 1800000 },
 ];
 
+// Template 8: Nước rửa bát_Nước lau sàn
+const SAMPLE_DETERGENT_ITEMS: ScannedItem[] = [
+  { id: '1', dateStr: '1/9', itemName: 'Nước rửa bát can 20L', unit: 'Can', quantity: 2, unitPrice: 280000, taxRate: 0, taxAmount: 0, amount: 560000, totalPayment: 520000, depositFee: 40000 },
+  { id: '2', dateStr: '1/9', itemName: 'Nước lau sàn can 20L', unit: 'Can', quantity: 1, unitPrice: 250000, taxRate: 0, taxAmount: 0, amount: 250000, totalPayment: 230000, depositFee: 20000 },
+];
+
 export const InvoiceScannerModal: React.FC<InvoiceScannerModalProps> = ({
   isOpen,
   onClose,
@@ -553,13 +559,19 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
   };
 
   // Quick switch template helper
-  const handleApplyTemplate = (type: 'rau' | 'onemarket' | 'anphat' | 'keyfood' | 'gas' | 'khau_ma' | 'ruou_viet') => {
+  const handleApplyTemplate = (type: 'rau' | 'onemarket' | 'anphat' | 'keyfood' | 'gas' | 'khau_ma' | 'ruou_viet' | 'detergent') => {
     if (type === 'ruou_viet') {
       setSelectedCatId(12);
       setSupplierName('CỬA HÀNG RƯỢU VIỆT');
       setReceiptDate('1/9');
       setScannedItems(SAMPLE_RUOU_VIET_ITEMS);
       setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Rượu Việt (Ảnh 1) - 1.800.000 VNĐ');
+    } else if (type === 'detergent') {
+      setSelectedCatId(11);
+      setSupplierName('CỬA HÀNG NƯỚC RỬA BÁT - LAU SÀN');
+      setReceiptDate('1/9');
+      setScannedItems(SAMPLE_DETERGENT_ITEMS);
+      setStatusMessage('✅ Đã nạp mẫu: Hóa đơn Nước rửa bát_Nước lau sàn có Trả vỏ can');
     } else if (type === 'rau') {
       setSelectedCatId(1);
       setSupplierName('HKD: PHÙNG BÁ TUYỂN (RAU - CỦ - QUẢ)');
@@ -774,6 +786,13 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
           >
             <span>🛒 ONEMARKET</span>
           </button>
+          <button
+            type="button"
+            onClick={() => handleApplyTemplate('detergent')}
+            className="px-3 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 font-bold rounded-lg border border-slate-300 transition shrink-0 flex items-center gap-1"
+          >
+            <span>🧼 Nước rửa bát_lau sàn</span>
+          </button>
         </div>
 
         {/* Gemini API Key Collapsible Bar */}
@@ -966,7 +985,7 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                     <th className="py-2 px-2 text-center w-16 border border-blue-400">Đơn vị</th>
                     <th className="py-2 px-2 text-center w-16 border border-blue-400">SL</th>
                     <th className="py-2 px-2 text-center w-24 border border-blue-400">Đơn Giá</th>
-                    {selectedCatId === 2 && (
+                    {(selectedCatId === 2 || selectedCatId === 11) && (
                       <th className="py-2 px-2 text-center w-24 border border-blue-400 bg-emerald-600">Tiền Trả Vỏ</th>
                     )}
                     {selectedCatId === 5 && (
@@ -979,7 +998,7 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                 <tbody>
                   {scannedItems.length === 0 ? (
                     <tr>
-                      <td colSpan={selectedCatId === 2 || selectedCatId === 5 ? 8 : 7} className="py-12 text-center text-slate-400 text-xs italic">
+                      <td colSpan={selectedCatId === 2 || selectedCatId === 5 || selectedCatId === 11 ? 8 : 7} className="py-12 text-center text-slate-400 text-xs italic">
                         Chưa có dữ liệu. Vui lòng tải ảnh hóa đơn ở cột bên trái hoặc chọn mẫu ở thanh công cụ!
                       </td>
                     </tr>
@@ -1023,7 +1042,7 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
                             className="w-full px-1.5 py-1 text-right rounded border border-slate-200 hover:border-blue-400 font-bold text-slate-900 focus:outline-hidden"
                           />
                         </td>
-                        {selectedCatId === 2 && (
+                        {(selectedCatId === 2 || selectedCatId === 11) && (
                           <td className="py-1 px-1">
                             <input
                               type="number"
