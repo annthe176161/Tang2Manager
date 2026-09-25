@@ -542,113 +542,139 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       )}
 
       {/* Top Bar Navigation for Salary */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-800 to-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-xl font-black text-slate-800">
-                Tính Lương Nhà Hàng
-              </h2>
-              {/* Period Selectors */}
-              <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-300">
-                <span className="text-xs font-bold text-emerald-900">Kỳ lương:</span>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="text-xs font-bold bg-white text-emerald-900 px-2 py-1 rounded-lg border border-emerald-200 focus:outline-hidden cursor-pointer shadow-2xs"
-                >
-                  {[...Array(12)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      Tháng {i + 1}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="text-xs font-bold bg-white text-emerald-900 px-2 py-1 rounded-lg border border-emerald-200 focus:outline-hidden cursor-pointer shadow-2xs"
-                >
-                  {yearsList.map((y) => (
-                    <option key={y} value={y}>
-                      Năm {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
-                <Database className={`w-3.5 h-3.5 ${isDbSynced ? 'text-emerald-600' : 'text-amber-500'}`} />
-                <span>{isDbSynced ? 'SQL Server DB: Đã lưu' : 'Đang đồng bộ...'}</span>
-              </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Tier 1: Header & Period Selector */}
+        <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/60 to-white">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+              <DollarSign className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">
-              {activeEmployeeId
-                ? `Đang xem: Bảng chấm công chi tiết của [${activeEmployee?.fullName}]`
-                : 'Bảng tổng hợp tiền lương toàn bộ nhân viên trong tháng'}
-            </p>
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">
+                  Tính Lương Nhà Hàng
+                </h2>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                  <Database className={`w-3.5 h-3.5 ${isDbSynced ? 'text-emerald-600' : 'text-amber-500'}`} />
+                  <span>{isDbSynced ? 'Đã lưu SQL Server' : 'Đang đồng bộ...'}</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {activeEmployeeId
+                  ? `Đang xem: Bảng chấm công chi tiết của [${activeEmployee?.fullName}]`
+                  : `Bảng tổng hợp tiền lương tháng ${selectedMonth}/${selectedYear} (${employees.length} nhân sự)`}
+              </p>
+            </div>
+          </div>
+
+          {/* Period Selector (Kỳ lương) */}
+          <div className="inline-flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200 shadow-2xs self-start md:self-auto">
+            <span className="text-xs font-bold text-slate-600 pl-2">Kỳ lương:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="text-xs font-bold bg-white text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Tháng {i + 1}
+                </option>
+              ))}
+            </select>
+            <span className="text-slate-300 font-bold">/</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="text-xs font-bold bg-white text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              {yearsList.map((y) => (
+                <option key={y} value={y}>
+                  Năm {y}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeEmployeeId ? (
+        {/* Tier 2: Action Controls & Quick Summary */}
+        <div className="px-4 py-3 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="flex items-center gap-2">
+            {activeEmployeeId ? (
+              <button
+                onClick={() => setActiveEmployeeId(null)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>← Quay lại Bảng Lương Tổng</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2.5 text-xs text-slate-600 font-medium flex-wrap">
+                <span className="font-bold text-slate-700">Tổng thực trả:</span>
+                <span className="text-sm font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                  {totalAllSalary.toLocaleString('vi-VN')} đ
+                </span>
+                {totalAllDebt > 0 && (
+                  <span className="text-[11px] text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                    Đã trừ công nợ: {totalAllDebt.toLocaleString('vi-VN')} đ
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons: Unified, Clean, Professional */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Xuất Excel gửi sếp */}
             <button
-              onClick={() => setActiveEmployeeId(null)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+              onClick={handleExportExcel}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99]"
+              title="Xuất bảng lương tổng hợp và chấm công chi tiết ra file Excel (.xlsx) gửi sếp"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>← Bảng Lương Tổng</span>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+              <span>Xuất Excel gửi sếp</span>
             </button>
-          ) : null}
 
-          {/* Nút Xuất File Excel gửi sếp */}
-          <button
-            onClick={handleExportExcel}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition"
-            title="Xuất bảng lương tổng hợp và chấm công chi tiết ra file Excel (.xlsx) gửi sếp"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất Excel gửi sếp</span>
-          </button>
+            {/* Copy ảnh Zalo */}
+            <button
+              onClick={() =>
+                activeEmployeeId
+                  ? handleCopy(detailTableRef)
+                  : handleCopy(summaryTableRef)
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition"
+              title="Copy ảnh bảng lương gửi qua Zalo"
+            >
+              <Copy className="w-3.5 h-3.5 text-blue-600" />
+              <span>Copy Ảnh</span>
+            </button>
 
-          {/* Nút Xóa Dữ Liệu */}
-          <button
-            onClick={() => setShowClearModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs shadow-2xs transition"
-            title={activeEmployeeId ? 'Xóa dữ liệu chấm công nhân viên này về 0' : 'Xóa dữ liệu chấm công toàn bộ nhân viên tháng này về 0'}
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>{activeEmployeeId ? 'Xóa Giờ Nhân Viên' : 'Xóa Dữ Liệu Tháng'}</span>
-          </button>
+            {/* Tải ảnh HD */}
+            <button
+              onClick={() =>
+                activeEmployeeId
+                  ? handleDownload(
+                      detailTableRef,
+                      `Bang_Cham_Cong_${activeEmployee?.fullName}_Thang_${selectedMonth}_${selectedYear}.png`
+                    )
+                  : handleDownload(summaryTableRef, `Bang_Luong_Tong_Thang_${selectedMonth}_${selectedYear}.png`)
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition"
+              title="Tải ảnh sắc nét Ultra HD về máy"
+            >
+              <Camera className="w-3.5 h-3.5 text-slate-600" />
+              <span>Tải Ảnh HD</span>
+            </button>
 
-          <button
-            onClick={() =>
-              activeEmployeeId
-                ? handleCopy(detailTableRef)
-                : handleCopy(summaryTableRef)
-            }
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition"
-          >
-            <Copy className="w-4 h-4" />
-            <span>📋 Copy Ảnh</span>
-          </button>
-
-          <button
-            onClick={() =>
-              activeEmployeeId
-                ? handleDownload(
-                    detailTableRef,
-                    `Bang_Cham_Cong_${activeEmployee?.fullName}_Thang_${selectedMonth}_${selectedYear}.png`
-                  )
-                : handleDownload(summaryTableRef, `Bang_Luong_Tong_Thang_${selectedMonth}_${selectedYear}.png`)
-            }
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-xs transition"
-          >
-            <Camera className="w-4 h-4" />
-            <span>📸 Tải Ảnh HD</span>
-          </button>
+            {/* Xóa / Làm sạch dữ liệu */}
+            <button
+              onClick={() => setShowClearModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition"
+              title={activeEmployeeId ? 'Xóa giờ làm nhân viên này về 0' : 'Làm sạch giờ làm tháng này để bắt đầu tháng mới'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{activeEmployeeId ? 'Xóa Giờ' : 'Làm Sạch Tháng'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
