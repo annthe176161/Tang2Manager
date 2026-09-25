@@ -1,14 +1,39 @@
 import { toPng, toBlob } from 'html-to-image';
 
-export async function downloadScheduleImage(element: HTMLElement, filename = 'Lich_Lam_Nha_Hang_UltraHD.png') {
+const getCaptureOptions = (element: HTMLElement) => {
+  const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, element.clientWidth);
+  const fullHeight = Math.max(element.scrollHeight, element.offsetHeight, element.clientHeight);
+
+  return {
+    quality: 1.0,
+    pixelRatio: 3, // Ultra HD 3x resolution for razor-sharp text and borders (>3000px wide)
+    backgroundColor: '#ffffff',
+    cacheBust: true,
+    width: fullWidth,
+    height: fullHeight,
+    style: {
+      overflow: 'visible',
+      maxWidth: 'none',
+      width: `${fullWidth}px`,
+    },
+    filter: (node: Node) => {
+      if (node instanceof HTMLElement) {
+        if (
+          node.classList.contains('print:hidden') ||
+          node.classList.contains('screenshot-exclude')
+        ) {
+          return false;
+        }
+      }
+      return true;
+    },
+  };
+};
+
+export async function downloadScheduleImage(element: HTMLElement, filename = 'Bang_Bieu_Nha_Hang_UltraHD.png') {
   try {
-    // Ultra HD 3x pixelRatio for razor-sharp text and borders (resolution > 3000px wide)
-    const dataUrl = await toPng(element, {
-      quality: 1.0,
-      pixelRatio: 3,
-      backgroundColor: '#ffffff',
-      cacheBust: true,
-    });
+    const options = getCaptureOptions(element);
+    const dataUrl = await toPng(element, options);
 
     const link = document.createElement('a');
     link.download = filename;
@@ -16,20 +41,15 @@ export async function downloadScheduleImage(element: HTMLElement, filename = 'Li
     link.click();
     return true;
   } catch (error) {
-    console.error('Lỗi chụp ảnh lịch:', error);
+    console.error('Lỗi tải ảnh Ultra HD:', error);
     throw error;
   }
 }
 
 export async function copyScheduleImageToClipboard(element: HTMLElement): Promise<boolean> {
   try {
-    // Ultra HD 3x for clipboard
-    const blob = await toBlob(element, {
-      quality: 1.0,
-      pixelRatio: 3,
-      backgroundColor: '#ffffff',
-      cacheBust: true,
-    });
+    const options = getCaptureOptions(element);
+    const blob = await toBlob(element, options);
 
     if (!blob) throw new Error('Không thể tạo blob ảnh');
 

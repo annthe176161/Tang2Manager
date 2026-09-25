@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { InvoiceCategory, InvoiceItem } from '../../types';
 import { invoiceApi } from '../../services/api';
 import { downloadScheduleImage, copyScheduleImageToClipboard } from '../../utils/screenshot';
+import { exportInvoiceToExcel } from '../../utils/exportInvoiceExcel';
 import {
   Camera,
   Copy,
@@ -11,7 +12,9 @@ import {
   Plus,
   Trash2,
   Edit2,
-  Sparkles
+  Sparkles,
+  FileSpreadsheet,
+  Database,
 } from 'lucide-react';
 import { InvoiceScannerModal } from './InvoiceScannerModal';
 
@@ -66,12 +69,29 @@ const INITIAL_KEYFOOD_ITEMS: InvoiceItem[] = [
   { id: 33, categoryId: 3, dateStr: '7/9', itemName: 'Ba chỉ heo có da rút sườn Nga - Vlmk Đông Lạnh', unit: 'kg', quantity: 20.86, unitPrice: 113400, taxRate: 0, taxAmount: 0, amount: 2365524, totalPayment: 2365524, displayOrder: 3 },
 ];
 
+const yearsList = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
+
 export const InvoiceManager: React.FC = () => {
-  const [selectedMonth, setSelectedMonth] = useState<number>(9);
-  const [selectedYear] = useState<number>(2026);
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_invoice_selected_month');
+    return saved ? Number(saved) : 9;
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const saved = localStorage.getItem('tang2_invoice_selected_year');
+    return saved ? Number(saved) : 2026;
+  });
+  const [isDbSynced, setIsDbSynced] = useState<boolean>(true);
   const [categories, setCategories] = useState<InvoiceCategory[]>(INITIAL_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    localStorage.setItem('tang2_invoice_selected_month', String(selectedMonth));
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    localStorage.setItem('tang2_invoice_selected_year', String(selectedYear));
+  }, [selectedYear]);
 
   // Items per category
   const [categoryItems, setCategoryItems] = useState<Record<number, InvoiceItem[]>>({
@@ -96,9 +116,11 @@ export const InvoiceManager: React.FC = () => {
         const fetchedCats = await invoiceApi.getCategories();
         if (fetchedCats && fetchedCats.length > 0) {
           setCategories(fetchedCats);
+          setIsDbSynced(true);
         }
       } catch (err) {
         console.log('Using local fallback for invoices:', err);
+        setIsDbSynced(false);
       }
     };
     fetchData();
@@ -386,11 +408,24 @@ export const InvoiceManager: React.FC = () => {
     }
   };
 
+  // Export Excel handler for boss
+  const handleExportExcel = () => {
+    exportInvoiceToExcel(
+      selectedMonth,
+      selectedYear,
+      categories,
+      categoryItems,
+      activeCategoryId
+    );
+    const catName = activeCategory ? activeCategory.name : 'Tổng hợp 12 hạng mục';
+    showToast(`📊 Đã xuất file Excel hóa đơn [${catName}] Tháng ${selectedMonth}/${selectedYear} gửi sếp!`);
+  };
+
   // Screenshot & Copy handlers
   const handleDownload = async (ref: React.RefObject<HTMLDivElement | null>, name: string) => {
     if (!ref.current) return;
     await downloadScheduleImage(ref.current, name);
-    showToast('Đã tải ảnh Ultra HD về máy! Gửi dạng File vào Zalo để không bị mờ.');
+    showToast('📸 Đã tải ảnh Ultra HD về máy! Gửi dạng File vào Zalo để hình ảnh sắc nét 100%.');
   };
 
   const handleCopy = async (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -409,92 +444,158 @@ export const InvoiceManager: React.FC = () => {
         </div>
       )}
 
-      {/* Top Bar Navigation for Invoices */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#245839] to-teal-800 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-            <Receipt className="w-6 h-6" />
+      {/* Top Bar Navigation for Invoices - 2-Tier Modern Layout */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Tier 1: Header & Period Selector */}
+        <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/60 to-white">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#245839] to-teal-800 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+              <Receipt className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">
+                  Quản Lý Hóa Đơn & Nhập Hàng
+                </h2>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                  <Database className={`w-3.5 h-3.5 ${isDbSynced ? 'text-emerald-600' : 'text-amber-500'}`} />
+                  <span>{isDbSynced ? 'Đã lưu SQL Server' : 'Đang kết nối DB...'}</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {activeCategory
+                  ? `Đang xem: Chi tiết hóa đơn [${activeCategory.name}] (${currentItems.length} mặt hàng)`
+                  : `Bảng tổng hợp chi phí 12 hạng mục & NCC tháng ${selectedMonth}/${selectedYear}`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <span>Tổng Hợp Hóa Đơn & Nhập Hàng</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="text-xs font-bold bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-300 focus:outline-hidden cursor-pointer"
-              >
-                {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Tháng {i + 1}/{selectedYear}
-                  </option>
-                ))}
-              </select>
-            </h2>
-            <p className="text-xs text-slate-500 font-semibold">
-              {activeCategory
-                ? `Đang xem: Chi tiết hóa đơn [${activeCategory.name}]`
-                : 'Bảng tổng hợp chi phí 12 hạng mục và nhà phân phối'}
-            </p>
+
+          {/* Period Selector (Kỳ hóa đơn) */}
+          <div className="inline-flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200 shadow-2xs self-start md:self-auto">
+            <span className="text-xs font-bold text-slate-600 pl-2">Kỳ hóa đơn:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="text-xs font-bold bg-white text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Tháng {i + 1}
+                </option>
+              ))}
+            </select>
+            <span className="text-slate-300 font-bold">/</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="text-xs font-bold bg-white text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              {yearsList.map((y) => (
+                <option key={y} value={y}>
+                  Năm {y}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeCategory ? (
-            <>
-              <button
-                onClick={() => setActiveCategoryId(null)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>← Bảng Chi Phí Tổng</span>
-              </button>
+        {/* Tier 2: Action Controls & Quick Summary */}
+        <div className="px-4 py-3 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="flex items-center gap-2">
+            {activeCategory ? (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActiveCategoryId(null)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200 shadow-2xs cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>← Bảng Chi Phí Tổng</span>
+                </button>
+                <div className="hidden sm:flex items-center gap-2 text-xs">
+                  <span className="text-slate-500 font-medium">Tổng hóa đơn:</span>
+                  <span className="font-extrabold text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                    {activeCategoryTotal.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 text-xs text-slate-600 font-medium flex-wrap">
+                <span className="font-bold text-slate-700">Tổng chi phí:</span>
+                <span className="text-sm font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                  {grandTotal.toLocaleString('vi-VN')} đ
+                </span>
+                <span className="text-[11px] text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                  Đã thanh toán: {categories.filter((c) => c.isPaid).length}/{categories.length}
+                </span>
+              </div>
+            )}
+          </div>
 
+          {/* Action Buttons: Unified, Clean, Professional */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Thêm mặt hàng nếu đang ở chi tiết */}
+            {activeCategory && (
               <button
                 onClick={handleOpenAddModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                title="Thêm mặt hàng mới vào hóa đơn này"
               >
-                <Plus className="w-4 h-4" />
-                <span>➕ Thêm Mặt Hàng</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm Mặt Hàng</span>
               </button>
-            </>
-          ) : null}
+            )}
 
-          {/* Nút Quét Hóa Đơn AI */}
-          <button
-            onClick={() => setIsScannerOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black rounded-xl text-xs shadow-md hover:shadow-lg transition cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-white" />
-            <span>📸 Quét Hóa Đơn (AI)</span>
-          </button>
+            {/* Quét Hóa Đơn AI */}
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              title="Dùng Camera hoặc Tải ảnh hóa đơn để AI tự động nhận diện và điền vào bảng"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Quét Hóa Đơn (AI)</span>
+            </button>
 
-          <button
-            onClick={() =>
-              activeCategory
-                ? handleCopy(detailTableRef)
-                : handleCopy(summaryTableRef)
-            }
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition"
-          >
-            <Copy className="w-4 h-4" />
-            <span>📋 Copy Ảnh Gửi Zalo</span>
-          </button>
+            {/* Xuất Excel gửi sếp */}
+            <button
+              onClick={handleExportExcel}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              title="Xuất bảng tổng hợp và chi tiết mặt hàng ra file Excel (.xlsx) gửi sếp"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+              <span>Xuất Excel gửi sếp</span>
+            </button>
 
-          <button
-            onClick={() =>
-              activeCategory
-                ? handleDownload(
-                    detailTableRef,
-                    `Hoa_Don_${activeCategory.name.replace(/[^a-zA-Z0-9]/g, '_')}_Thang_${selectedMonth}.png`
-                  )
-                : handleDownload(summaryTableRef, `Tong_Hop_Hoa_Don_Thang_${selectedMonth}.png`)
-            }
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-xs transition"
-          >
-            <Camera className="w-4 h-4" />
-            <span>📸 Tải Ảnh Ultra HD</span>
-          </button>
+            {/* Copy ảnh Zalo */}
+            <button
+              onClick={() =>
+                activeCategory
+                  ? handleCopy(detailTableRef)
+                  : handleCopy(summaryTableRef)
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition cursor-pointer"
+              title="Copy ảnh hóa đơn độ nét cao để gửi nhanh qua Zalo"
+            >
+              <Copy className="w-3.5 h-3.5 text-blue-600" />
+              <span>Copy Ảnh</span>
+            </button>
+
+            {/* Tải ảnh Ultra HD */}
+            <button
+              onClick={() =>
+                activeCategory
+                  ? handleDownload(
+                      detailTableRef,
+                      `Hoa_Don_${activeCategory.name.replace(/[^a-zA-Z0-9]/g, '_')}_Thang_${selectedMonth}_${selectedYear}.png`
+                    )
+                  : handleDownload(summaryTableRef, `Tong_Hop_Hoa_Don_Thang_${selectedMonth}_${selectedYear}.png`)
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition cursor-pointer"
+              title="Tải ảnh hóa đơn độ phân giải cao Ultra HD về máy"
+            >
+              <Camera className="w-3.5 h-3.5 text-slate-600" />
+              <span>Tải Ảnh HD</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -505,8 +606,37 @@ export const InvoiceManager: React.FC = () => {
         <div className="space-y-4">
           <div
             ref={summaryTableRef}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800 max-w-4xl mx-auto"
+            className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800 max-w-4xl mx-auto"
           >
+            {/* Header cho in ấn & chụp ảnh gửi sếp */}
+            <div className="mb-4 pb-3 border-b-2 border-emerald-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+                  T2
+                </div>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                    NHÀ HÀNG TẦNG 2 • QUẢN LÝ TÀI CHÍNH
+                  </div>
+                  <h1 className="text-lg font-black text-slate-900 leading-tight">
+                    BẢNG TỔNG HỢP CHI PHÍ HÓA ĐƠN & NHẬP HÀNG
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear} • Ngày xuất: {new Date().toLocaleDateString('vi-VN')}
+                  </p>
+                </div>
+              </div>
+              <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200">
+                <div className="text-[11px] text-slate-500 font-semibold">Tình trạng thanh toán</div>
+                <div className="text-sm font-black text-emerald-700">
+                  {categories.filter((c) => c.isPaid).length}/{categories.length} Hạng mục đã duyệt chi
+                </div>
+                <div className="text-xs font-bold text-slate-700">
+                  Tổng chi phí: <span className="text-emerald-800 font-black">{grandTotal.toLocaleString('vi-VN')} đ</span>
+                </div>
+              </div>
+            </div>
+
             {/* Top Sheet Tab "T9_2026 ∨ 🧮" matching Image 1 */}
             <div className="flex items-center gap-2 mb-2">
               <div className="bg-[#245839] text-white px-4 py-1.5 text-xs font-bold rounded-t-md inline-flex items-center gap-2 shadow-2xs">
@@ -635,6 +765,25 @@ export const InvoiceManager: React.FC = () => {
                 </tr>
               </tbody>
             </table>
+
+            {/* Chữ ký xác nhận gửi sếp */}
+            <div className="mt-8 pt-4 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-xs">
+              <div>
+                <div className="font-bold text-slate-700">Người lập biểu</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-14"></div>
+              </div>
+              <div>
+                <div className="font-bold text-slate-700">Quản lý thu mua / Bếp</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-14"></div>
+              </div>
+              <div>
+                <div className="font-bold text-slate-700">Ban Giám Đốc phê duyệt</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & đóng dấu)</div>
+                <div className="h-14"></div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 flex items-center justify-between max-w-4xl mx-auto">
@@ -653,8 +802,37 @@ export const InvoiceManager: React.FC = () => {
         <div className="space-y-4">
           <div
             ref={detailTableRef}
-            className="bg-white p-5 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800"
+            className="bg-white p-5 sm:p-7 rounded-2xl shadow-sm border border-slate-300 select-none overflow-x-auto text-slate-800"
           >
+            {/* Header cho in ấn & chụp ảnh gửi sếp */}
+            <div className="mb-4 pb-3 border-b-2 border-blue-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-800 text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+                  T2
+                </div>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-wider text-blue-800">
+                    NHÀ HÀNG TẦNG 2 • HÓA ĐƠN CHI TIẾT
+                  </div>
+                  <h1 className="text-lg font-black text-slate-900 leading-tight">
+                    {activeCategory.name.toUpperCase()}
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Kỳ hạch toán: Tháng {selectedMonth}/{selectedYear} • {currentItems.length} mặt hàng đã ghi nhận
+                  </p>
+                </div>
+              </div>
+              <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-slate-200">
+                <div className="text-[11px] text-slate-500 font-semibold">Tình trạng thanh toán</div>
+                <div className={`text-sm font-black ${activeCategory.isPaid ? 'text-emerald-700' : 'text-amber-600'}`}>
+                  {activeCategory.isPaid ? '✓ ĐÃ THANH TOÁN' : '⏳ CHƯA THANH TOÁN'}
+                </div>
+                <div className="text-xs font-bold text-slate-700">
+                  Tổng chi phí: <span className="text-blue-900 font-black">{activeCategoryTotal.toLocaleString('vi-VN')} đ</span>
+                </div>
+              </div>
+            </div>
+
             {/* Header Title Banner */}
             <div className="mb-3">
               {activeCategory.id === 4 ? (
@@ -692,7 +870,7 @@ export const InvoiceManager: React.FC = () => {
                     <th className="border border-gray-600 py-2.5 px-3 text-center bg-[#ff0000] text-white min-w-[120px]">
                       Tổng tháng
                     </th>
-                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden">
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
                       Thao tác
                     </th>
                   </tr>
@@ -729,7 +907,7 @@ export const InvoiceManager: React.FC = () => {
                           {activeCategoryTotal.toLocaleString('vi-VN')}
                         </td>
                       ) : null}
-                      <td className="border border-gray-500 py-2 px-2 text-center print:hidden">
+                      <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenEditModal(item)}
@@ -766,7 +944,7 @@ export const InvoiceManager: React.FC = () => {
                     <th className="border border-gray-600 py-2.5 px-3 text-center bg-[#ff0000] text-white min-w-[120px]">
                       Tổng tháng
                     </th>
-                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden">
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
                       Thao tác
                     </th>
                   </tr>
@@ -795,7 +973,7 @@ export const InvoiceManager: React.FC = () => {
                           {activeCategoryTotal.toLocaleString('vi-VN')}
                         </td>
                       ) : null}
-                      <td className="border border-gray-500 py-2 px-2 text-center print:hidden">
+                      <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenEditModal(item)}
@@ -831,7 +1009,7 @@ export const InvoiceManager: React.FC = () => {
                     <th className="border border-gray-600 py-2.5 px-4 text-center bg-[#ff0000] text-white min-w-[120px]">
                       Tổng ngày
                     </th>
-                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden">
+                    <th className="border border-gray-600 py-2.5 px-2 text-center w-14 bg-slate-700 text-white print:hidden screenshot-exclude">
                       Thao tác
                     </th>
                   </tr>
@@ -868,7 +1046,7 @@ export const InvoiceManager: React.FC = () => {
                           ) : (
                             <td className="border border-gray-500 py-2 px-4 text-center bg-white"></td>
                           )}
-                          <td className="border border-gray-500 py-2 px-2 text-center print:hidden">
+                          <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 onClick={() => handleOpenEditModal(item)}
@@ -903,13 +1081,33 @@ export const InvoiceManager: React.FC = () => {
                     <td colSpan={5} className="border border-gray-500 py-2.5 px-4 text-right">
                       TỔNG CỘNG THÁNG {selectedMonth}:
                     </td>
-                    <td colSpan={3} className="border border-gray-500 py-2.5 px-4 text-center text-emerald-900 text-base font-black">
+                    <td colSpan={2} className="border border-gray-500 py-2.5 px-4 text-center text-emerald-900 text-base font-black">
                       {activeCategoryTotal.toLocaleString('vi-VN')} VNĐ
                     </td>
+                    <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude bg-slate-100"></td>
                   </tr>
                 </tbody>
               </table>
             )}
+
+            {/* Chữ ký xác nhận gửi sếp */}
+            <div className="mt-8 pt-4 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-xs">
+              <div>
+                <div className="font-bold text-slate-700">Người lập biểu</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-14"></div>
+              </div>
+              <div>
+                <div className="font-bold text-slate-700">Quản lý thu mua / Bếp</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
+                <div className="h-14"></div>
+              </div>
+              <div>
+                <div className="font-bold text-slate-700">Ban Giám Đốc phê duyệt</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & đóng dấu)</div>
+                <div className="h-14"></div>
+              </div>
+            </div>
           </div>
         </div>
       )}
