@@ -34,41 +34,6 @@ const INITIAL_CATEGORIES: InvoiceCategory[] = [
   { id: 12, name: '베트남 술 (Rượu Việt)', categoryType: 'Supplier', isPaid: false, displayOrder: 12, fixedAmount: 0 },
 ];
 
-// Initial fallback items for Rau (Image 2)
-const INITIAL_RAU_ITEMS: InvoiceItem[] = [
-  { id: 1, categoryId: 1, dateStr: '1/9', itemName: 'Xà lách', unit: 'kg', quantity: 3.28, unitPrice: 40000, taxRate: 0, taxAmount: 0, amount: 131200, totalPayment: 131200, displayOrder: 1 },
-  { id: 2, categoryId: 1, dateStr: '1/9', itemName: 'Dưa chuột', unit: 'kg', quantity: 1, unitPrice: 22000, taxRate: 0, taxAmount: 0, amount: 22000, totalPayment: 22000, displayOrder: 2 },
-  { id: 3, categoryId: 1, dateStr: '1/9', itemName: 'Đậu phụ', unit: 'bìa', quantity: 5, unitPrice: 2500, taxRate: 0, taxAmount: 0, amount: 12500, totalPayment: 12500, displayOrder: 3 },
-  { id: 4, categoryId: 1, dateStr: '1/9', itemName: 'Nấm đùi gà', unit: 'kg', quantity: 1, unitPrice: 40000, taxRate: 0, taxAmount: 0, amount: 40000, totalPayment: 40000, displayOrder: 4 },
-  { id: 5, categoryId: 1, dateStr: '1/9', itemName: 'Ngồng tỏi', unit: 'kg', quantity: 0.55, unitPrice: 75000, taxRate: 0, taxAmount: 0, amount: 41250, totalPayment: 41250, displayOrder: 5 },
-  { id: 6, categoryId: 1, dateStr: '1/9', itemName: 'Cà rốt', unit: 'kg', quantity: 1, unitPrice: 13000, taxRate: 0, taxAmount: 0, amount: 13000, totalPayment: 13000, displayOrder: 6 },
-  { id: 7, categoryId: 1, dateStr: '1/9', itemName: 'Củ cải đường', unit: 'kg', quantity: 1.4, unitPrice: 13000, taxRate: 0, taxAmount: 0, amount: 18200, totalPayment: 18200, displayOrder: 7 },
-  { id: 8, categoryId: 1, dateStr: '1/9', itemName: 'Bí ngòi', unit: 'kg', quantity: 0.96, unitPrice: 30000, taxRate: 0, taxAmount: 0, amount: 28800, totalPayment: 28800, displayOrder: 8 },
-  { id: 9, categoryId: 1, dateStr: '1/9', itemName: 'Sốt mayonnaise', unit: 'chai', quantity: 2, unitPrice: 222000, taxRate: 0, taxAmount: 0, amount: 444000, totalPayment: 444000, displayOrder: 9 },
-  { id: 10, categoryId: 1, dateStr: '2/9', itemName: 'Xà lách', unit: 'kg', quantity: 3, unitPrice: 40000, taxRate: 0, taxAmount: 0, amount: 120000, totalPayment: 120000, displayOrder: 10 },
-  { id: 11, categoryId: 1, dateStr: '2/9', itemName: 'Lá nhíp', unit: 'kg', quantity: 0.5, unitPrice: 95000, taxRate: 0, taxAmount: 0, amount: 47500, totalPayment: 47500, displayOrder: 11 },
-  { id: 12, categoryId: 1, dateStr: '2/9', itemName: 'Ngồng tỏi', unit: 'kg', quantity: 0.4, unitPrice: 75000, taxRate: 0, taxAmount: 0, amount: 30000, totalPayment: 30000, displayOrder: 12 },
-];
-
-// Initial fallback items for An Phát (Image 3)
-const INITIAL_ANPHAT_ITEMS: InvoiceItem[] = [
-  { id: 21, categoryId: 4, dateStr: '3/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 5.24, unitPrice: 260000, taxRate: 5, taxAmount: 68120, amount: 1362400, totalPayment: 1430520, displayOrder: 1 },
-  { id: 22, categoryId: 4, dateStr: '3/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 2.62, unitPrice: 260000, taxRate: 5, taxAmount: 34060, amount: 681200, totalPayment: 715260, displayOrder: 2 },
-  { id: 23, categoryId: 4, dateStr: '5/9', itemName: 'Ba Chỉ Heo Thái', unit: 'kg', quantity: 3, unitPrice: 125000, taxRate: 5, taxAmount: 18750, amount: 375000, totalPayment: 393750, displayOrder: 3 },
-  { id: 24, categoryId: 4, dateStr: '7/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 2.64, unitPrice: 260000, taxRate: 5, taxAmount: 34320, amount: 686400, totalPayment: 720720, displayOrder: 4 },
-  { id: 25, categoryId: 4, dateStr: '7/9', itemName: 'Ba Chỉ Bò Cuộn 500gr', unit: 'kg', quantity: 3, unitPrice: 200000, taxRate: 5, taxAmount: 30000, amount: 600000, totalPayment: 630000, displayOrder: 5 },
-  { id: 26, categoryId: 4, dateStr: '10/9', itemName: 'Dè Sườn Bò Cut Mỹ Swift', unit: 'kg', quantity: 2.7, unitPrice: 260000, taxRate: 5, taxAmount: 35100, totalPayment: 737100, amount: 702000, displayOrder: 6 },
-  { id: 27, categoryId: 4, dateStr: '10/9', itemName: 'Ba Chỉ Bò Cuộn 500gr', unit: 'kg', quantity: 3, unitPrice: 200000, taxRate: 5, taxAmount: 30000, totalPayment: 630000, amount: 600000, displayOrder: 7 },
-  { id: 28, categoryId: 4, dateStr: '10/9', itemName: 'Ba Chỉ Heo Thái', unit: 'kg', quantity: 5, unitPrice: 125000, taxRate: 5, taxAmount: 31250, totalPayment: 656250, amount: 625000, displayOrder: 8 },
-];
-
-// Initial fallback items for Keyfood (Image 3)
-const INITIAL_KEYFOOD_ITEMS: InvoiceItem[] = [
-  { id: 31, categoryId: 3, dateStr: '3/9', itemName: 'Sườn heo cánh buồm Rivasam TBN đông lạnh', unit: 'kg', quantity: 20, unitPrice: 93450, taxRate: 0, taxAmount: 0, amount: 1869000, totalPayment: 1869000, displayOrder: 1 },
-  { id: 32, categoryId: 3, dateStr: '3/9', itemName: 'Ba chỉ heo có da rút sườn Nga - Apk Đông Lạnh', unit: 'kg', quantity: 20.92, unitPrice: 110250, taxRate: 0, taxAmount: 0, amount: 2306430, totalPayment: 2306430, displayOrder: 2 },
-  { id: 33, categoryId: 3, dateStr: '7/9', itemName: 'Ba chỉ heo có da rút sườn Nga - Vlmk Đông Lạnh', unit: 'kg', quantity: 20.86, unitPrice: 113400, taxRate: 0, taxAmount: 0, amount: 2365524, totalPayment: 2365524, displayOrder: 3 },
-];
-
 const yearsList = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
 
 export const InvoiceManager: React.FC = () => {
@@ -102,12 +67,8 @@ export const InvoiceManager: React.FC = () => {
     localStorage.setItem('tang2_invoice_selected_year', String(selectedYear));
   }, [selectedYear]);
 
-  // Items per category
-  const [categoryItems, setCategoryItems] = useState<Record<number, InvoiceItem[]>>({
-    1: INITIAL_RAU_ITEMS,
-    4: INITIAL_ANPHAT_ITEMS,
-    3: INITIAL_KEYFOOD_ITEMS,
-  });
+  // Items per category - Khởi tạo rỗng, hoàn toàn đọc từ Database SQL Server
+  const [categoryItems, setCategoryItems] = useState<Record<number, InvoiceItem[]>>({});
 
   const summaryTableRef = useRef<HTMLDivElement>(null);
   const detailTableRef = useRef<HTMLDivElement>(null);
@@ -120,6 +81,8 @@ export const InvoiceManager: React.FC = () => {
 
   // Load from API on mount and when period changes
   useEffect(() => {
+    // Reset cache các mặt hàng khi đổi tháng/năm để không bị dính dữ liệu cũ
+    setCategoryItems({});
     const fetchData = async () => {
       try {
         const fetchedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
@@ -169,8 +132,8 @@ export const InvoiceManager: React.FC = () => {
   // Calculate total for each category
   const getCategoryTotal = (cat: InvoiceCategory) => {
     const items = categoryItems[cat.id];
-    if (items && items.length > 0) {
-      return items.reduce((sum, i) => sum + (i.totalPayment > 0 ? i.totalPayment : i.amount), 0);
+    if (items !== undefined) {
+      return items.reduce((sum, i) => sum + (i.totalPayment > 0 ? i.totalPayment : (i.amount - (i.depositFee || 0))), 0);
     }
     return cat.fixedAmount || cat.totalAmount || 0;
   };
@@ -509,13 +472,27 @@ export const InvoiceManager: React.FC = () => {
       await invoiceApi.clearInvoiceData(selectedMonth, selectedYear, activeCategoryId || undefined);
       if (activeCategoryId) {
         setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: [] }));
-        setCategories((prev) =>
-          prev.map((c) => (c.id === activeCategoryId ? { ...c, fixedAmount: 0, isPaid: false } : c))
-        );
-        showToast(`🗑️ Đã làm sạch số tiền mục [${activeCategory?.name}] Tháng ${selectedMonth}/${selectedYear} trong Database (Giữ nguyên mục)!`);
       } else {
         setCategoryItems({});
-        setCategories((prev) => prev.map((c) => ({ ...c, fixedAmount: 0, isPaid: false })));
+      }
+
+      // Re-fetch fresh categories from DB immediately to update summary table
+      const freshCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
+      if (freshCats && freshCats.length > 0) {
+        setCategories(freshCats);
+      } else {
+        setCategories((prev) =>
+          prev.map((c) =>
+            !activeCategoryId || c.id === activeCategoryId
+              ? { ...c, fixedAmount: 0, totalAmount: 0, itemCount: 0, isPaid: false }
+              : c
+          )
+        );
+      }
+
+      if (activeCategoryId) {
+        showToast(`🗑️ Đã làm sạch số tiền mục [${activeCategory?.name}] Tháng ${selectedMonth}/${selectedYear} trong Database (Giữ nguyên mục)!`);
+      } else {
         showToast(`🗑️ Đã làm sạch toàn bộ số tiền hóa đơn Tháng ${selectedMonth}/${selectedYear} trong Database (Giữ nguyên toàn bộ danh mục)!`);
       }
     } catch (err) {
@@ -524,11 +501,17 @@ export const InvoiceManager: React.FC = () => {
       if (activeCategoryId) {
         setCategoryItems((prev) => ({ ...prev, [activeCategoryId]: [] }));
         setCategories((prev) =>
-          prev.map((c) => (c.id === activeCategoryId ? { ...c, fixedAmount: 0, isPaid: false } : c))
+          prev.map((c) =>
+            c.id === activeCategoryId
+              ? { ...c, fixedAmount: 0, totalAmount: 0, itemCount: 0, isPaid: false }
+              : c
+          )
         );
       } else {
         setCategoryItems({});
-        setCategories((prev) => prev.map((c) => ({ ...c, fixedAmount: 0, isPaid: false })));
+        setCategories((prev) =>
+          prev.map((c) => ({ ...c, fixedAmount: 0, totalAmount: 0, itemCount: 0, isPaid: false }))
+        );
       }
       showToast(`Đã làm sạch số tiền hóa đơn Tháng ${selectedMonth}/${selectedYear}!`);
     }
