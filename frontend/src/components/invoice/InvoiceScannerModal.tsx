@@ -180,138 +180,197 @@ export const InvoiceScannerModal: React.FC<InvoiceScannerModalProps> = ({
     setIsProcessing(true);
     setStatusMessage('Đang quét và phân tích hóa đơn...');
 
-    // 1. If user provided Gemini Vision API Key, call AI model directly with strict negative constraints
+    // Detect actual mimeType from dataUrl (jpeg, png, webp, etc.)
+    const detectedMime = dataUrl.substring(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';')) || 'image/jpeg';
+    const mimeType = detectedMime.startsWith('image/') ? detectedMime : 'image/jpeg';
+
+    // 1. If user provided Gemini Vision API Key, call AI model directly with trained few-shot prompt
     if (apiKey.trim()) {
+      setStatusMessage('🤖 Đang gọi AI Gemini Vision đọc và bóc tách từng dòng hóa đơn...');
       try {
-        const prompt = `Bạn là chuyên gia kế toán nhà hàng, chuyên đọc và trích xuất dữ liệu từ ảnh hóa đơn mua hàng (kể cả phiếu xuất kho KiotViet, hóa đơn siêu thị, hoặc chữ viết tay).
+        const categoriesListStr = categories
+          .map((c) => `- ID ${c.id}: "${c.name}"`)
+          .join('\n');
 
-MỤC TIÊU: Chỉ bóc tách thông tin cốt lõi, TUYỆT ĐỐI KHÔNG đọc các thông tin râu ria ngoài lề vào bảng hàng hóa.
+        const trainedPrompt = `Bạn là chuyên gia kế toán nhà hàng Tầng 2 chuyên nghiệp.
+Nhiệm vụ của bạn là nhìn ảnh hóa đơn / phiếu giao hàng / phiếu xuất kho và bóc tách chính xác 100% dữ liệu từng dòng mặt hàng ra định dạng JSON.
 
-1. "supplier": Tên nhà cung cấp / Cửa hàng bán (Ví dụ: "CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI QUỐC TẾ KEYGROUP (Keyfoods Viet)", "ONEMARKET", "HKD PHÙNG BÁ TUYỂN"...)
-2. "dateStr": Ngày mua hàng định dạng "D/M" hoặc "DD/MM" (Ví dụ: "20/9", "22/9", "23/9"). Tìm từ "Ngày ... tháng ..." hoặc ngày in trên hóa đơn.
-3. "categoryName": Một trong các hạng mục phù hợp:
-   - "KEYFOOD" hoặc "삼겹살" (nếu là thịt heo, sườn, Keyfood/Keygroup)
-   - "One Market" hoặc "원마켓" (nếu là ONEMARKET, đồ Hàn Quốc, kim chi, nước gạo)
-   - "Rau" hoặc "야채" (nếu là rau củ quả, nấm, đậu, hành, Phùng Bá Tuyển)
-   - "AN PHÁT" hoặc "소고기" (nếu là thịt bò, An Phát, sườn bò Swift)
-   - "Gas" hoặc "가스" (nếu là gas Petrolimex)
-4. "totalPayment": Tổng tiền thực tế của cả hóa đơn (Ví dụ: 2785104).
-5. "items": Mảng chứa DUY NHẤT các dòng hàng hóa thực sự được mua nằm trong bảng hàng hóa:
-   - "itemName": Tên đầy đủ của mặt hàng (Ví dụ: "Ba chỉ heo có da rút sườn Nga - Vlmk Đông Lạnh (thùng mã cân)")
-   - "unit": Đơn vị tính (kg, thùng, chai, bìa, gói, quả...)
-   - "quantity": Số lượng mua (Ví dụ: 24.56, 2, 5)
-   - "unitPrice": Đơn giá 1 đơn vị (Ví dụ: 113400)
-   - "amount": Thành tiền = quantity * unitPrice (Ví dụ: 2785104)
+DANH SÁCH 12 HẠNG MỤC CỦA NHÀ HÀNG (Hãy chọn ID phù hợp nhất vào "categoryId"):
+${categoriesListStr}
 
-QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
-- TUYỆT ĐỐI KHÔNG được đưa vào mảng items các thông tin sau:
-  + Số tài khoản ngân hàng (MB Bank, Vietcombank, STK...), mã QR thanh toán
-  + Hotline, số điện thoại người bán/người mua (079..., 033...)
-  + Địa chỉ cửa hàng, địa chỉ giao hàng (Parking Zone, Vinhomes Smart City, Lô G41 Dương Nội...)
-  + Số phiếu, số hóa đơn (HD015521...), mã QR, link website (kiotviet...)
-  + Tên nhân viên bán hàng, người nhận, người bán, thủ kho
-  + Dòng chữ "Tổng tiền hàng", "Tổng cộng", "Tổng thanh toán bằng chữ", ngày ký tên.
-- Chỉ trả về duy nhất chuỗi JSON chuẩn (không dùng codeblock markdown):
+HƯỚNG DẪN BÓC TÁCH CHO TỪNG DẠNG HÓA ĐƠN:
+1. Phiếu xuất kho / bán hàng KiotViet, Sapo, Misa (như NPP KEYFOOD, AN PHÁT, KHẤU MÁ HEO):
+   - Đọc từng dòng hàng: Tên hàng, Đơn vị tính, Số lượng, Đơn giá, Thuế VAT (nếu có), Thành tiền.
+   - BỎ QUA HOÀN TOÀN: Số tài khoản ngân hàng (MB Bank, Vietcombank, STK...), mã QR thanh toán, Hotline, Số điện thoại, Địa chỉ giao hàng (Parking Zone, Smart City, Lô G41 Dương Nội, Đại Mỗ...), Tên nhân viên bán, Thủ kho, Người mua, Mã phiếu HD...
+2. Hóa đơn viết tay chợ đầu mối (như HKD Phùng Bá Tuyển rau củ quả):
+   - Chữ viết tay thường gồm: Tên rau củ quả | Số lượng (kg, quả, gói, bìa) | Đơn giá | Thành tiền.
+   - Nhận diện cách viết tắt số: "35k" = 35000, "105k" = 105000, "2.5" = 2.5, "0.58" = 0.58.
+3. Hóa đơn siêu thị Hàn Quốc ONEMARKET, K-Market:
+   - Thường có tên song ngữ tiếng Hàn và tiếng Việt (Ví dụ: "Kim chi que huong 10kg (고향 포기김치)", "Nuoc Gao Buoi Sang 1.5L"). Giữ cả hai hoặc tên tiếng Việt rõ ràng.
+4. Hóa đơn Gas công nghiệp / Can nước tẩy rửa:
+   - Nếu có dòng tiền cọc vỏ bình, trả vỏ bình/can -> trích xuất vào "depositFee".
+   - Nếu có cước vận chuyển -> trích xuất vào "shipFee".
+
+CÁC TRƯỜNG DỮ LIỆU CẦN TRẢ VỀ:
+- "supplier": Tên nhà cung cấp / Cửa hàng bán (Ví dụ: "KEYFOOD", "ONEMARKET", "HKD PHÙNG BÁ TUYỂN", "NPP AN PHÁT", "PETROLIMEX"...).
+- "dateStr": Ngày mua hàng định dạng "D/M" (Ví dụ: "20/9", "3/9", "23/9").
+- "categoryId": Số nguyên ID của hạng mục khớp nhất trong danh sách hạng mục ở trên.
+- "totalPayment": Tổng tiền thực tế của cả hóa đơn (số nguyên).
+- "depositFee": Tiền cọc vỏ / trả vỏ bình gas hoặc can (nếu có, không có thì 0).
+- "shipFee": Tiền cước vận chuyển / ship (nếu có, không có thì 0).
+- "items": Mảng chứa các dòng hàng hóa THỰC SỰ được mua trong hóa đơn:
+  + "itemName": Tên đầy đủ của mặt hàng.
+  + "unit": Đơn vị tính (kg, thùng, chai, bìa, gói, quả, can, cây, con, hộp, đĩa...).
+  + "quantity": Số lượng mua (cho phép số thập phân như 24.56, 0.58, 3, 5).
+  + "unitPrice": Đơn giá 1 đơn vị (Ví dụ: 113400, 35000).
+  + "taxRate": Thuế suất VAT (0, 5, 8, 10...) nếu có.
+  + "taxAmount": Tiền thuế VAT của dòng đó (nếu có, không thì 0).
+  + "amount": Thành tiền = quantity * unitPrice (trước thuế).
+  + "totalPayment": Tổng tiền dòng = amount + taxAmount.
+
+QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI:
+- TUYỆT ĐỐI KHÔNG đưa số tài khoản, số điện thoại, địa chỉ, người ký tên, dòng tiêu đề cột ("Tên hàng", "Đơn giá", "Thành tiền") vào danh sách items.
+- Chỉ trả về DUY NHẤT một chuỗi JSON hợp lệ theo mẫu sau (không bọc trong markdown hay lời giải thích nào):
 {
   "supplier": "...",
   "dateStr": "...",
-  "categoryName": "...",
+  "categoryId": 1,
   "totalPayment": 0,
+  "depositFee": 0,
+  "shipFee": 0,
   "items": [
     {
       "itemName": "...",
-      "unit": "...",
-      "quantity": 0,
+      "unit": "kg",
+      "quantity": 1,
       "unitPrice": 0,
-      "amount": 0
+      "taxRate": 0,
+      "taxAmount": 0,
+      "amount": 0,
+      "totalPayment": 0
     }
   ]
 }`;
 
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: 'image/jpeg', data: base64 } }
-                  ]
-                }
-              ]
-            })
+        // Try candidate models in order: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash
+        const modelsToTry = [
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-1.5-flash-latest'
+        ];
+
+        let parsed: any = null;
+        let lastErrorMsg = '';
+
+        for (const model of modelsToTry) {
+          try {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        { text: trainedPrompt },
+                        { inlineData: { mimeType, data: base64 } }
+                      ]
+                    }
+                  ],
+                  generationConfig: {
+                    temperature: 0.1,
+                  }
+                })
+              }
+            );
+
+            if (!res.ok) {
+              const errBody = await res.json().catch(() => ({}));
+              lastErrorMsg = errBody?.error?.message || `HTTP ${res.status}: ${res.statusText}`;
+              console.warn(`Model ${model} returned error:`, lastErrorMsg);
+              continue;
+            }
+
+            const data = await res.json();
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (rawText) {
+              const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+                break;
+              }
+            }
+          } catch (modelErr: any) {
+            lastErrorMsg = modelErr?.message || String(modelErr);
+            console.warn(`Error trying ${model}:`, modelErr);
           }
-        );
-
-        const data = await res.json();
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
-
-        if (parsed.supplier) setSupplierName(parsed.supplier);
-        if (parsed.dateStr) setReceiptDate(parsed.dateStr);
-
-        // Auto match category
-        if (parsed.categoryName) {
-          const catKeyword = parsed.categoryName.toLowerCase();
-          const matched = categories.find((c) =>
-            c.name.toLowerCase().includes(catKeyword) ||
-            (catKeyword.includes('keyfood') && c.name.includes('KEYFOOD')) ||
-            (catKeyword.includes('one') && c.name.includes('원마켓')) ||
-            (catKeyword.includes('rau') && c.name.includes('야채')) ||
-            (catKeyword.includes('phát') && c.name.includes('AN PHÁT')) ||
-            (catKeyword.includes('gas') && c.name.includes('가스'))
-          );
-          if (matched) setSelectedCatId(matched.id);
         }
 
-        if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
-          // Negative filter on AI output just in case
-          const filteredItems = parsed.items.filter((it: any) => {
+        if (parsed && parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
+          if (parsed.supplier) setSupplierName(parsed.supplier);
+          if (parsed.dateStr) setReceiptDate(parsed.dateStr);
+          if (parsed.categoryId) {
+            const exists = categories.some((c) => c.id === parsed.categoryId);
+            if (exists) setSelectedCatId(parsed.categoryId);
+          }
+
+          // Negative noise filter
+          const cleanItems = parsed.items.filter((it: any) => {
             const name = (it.itemName || '').toLowerCase();
             return !name.includes('bank') && 
                    !name.includes('tài khoản') && 
                    !name.includes('hotline') && 
-                   !name.includes('parking') && 
-                   !name.includes('vinhomes') &&
-                   !name.includes('tổng cộng');
+                   !name.includes('tổng cộng') &&
+                   !name.includes('stk');
           });
 
-          if (filteredItems.length > 0) {
-            const items: ScannedItem[] = filteredItems.map((it: any, idx: number) => {
+          if (cleanItems.length > 0) {
+            const items: ScannedItem[] = cleanItems.map((it: any, idx: number) => {
               const q = Number(it.quantity) || 1;
               const p = Number(it.unitPrice) || 0;
               const a = it.amount ? Number(it.amount) : Math.round(q * p);
+              const tr = Number(it.taxRate) || 0;
+              const ta = it.taxAmount ? Number(it.taxAmount) : Math.round((a * tr) / 100);
+              const tp = it.totalPayment ? Number(it.totalPayment) : a + ta;
               return {
                 id: String(idx + 1),
                 dateStr: parsed.dateStr || receiptDate,
-                itemName: it.itemName || 'Hàng hóa',
+                itemName: it.itemName || 'Mặt hàng',
                 unit: it.unit || 'kg',
                 quantity: q,
                 unitPrice: p,
-                taxRate: 0,
-                taxAmount: 0,
+                taxRate: tr,
+                taxAmount: ta,
                 amount: a,
-                totalPayment: a,
+                totalPayment: tp,
+                depositFee: it.depositFee ? Number(it.depositFee) : undefined,
+                shipFee: it.shipFee ? Number(it.shipFee) : undefined,
               };
             });
+
             setScannedItems(items);
-            setStatusMessage(`✅ AI Vision đã nhận diện thành công: ${parsed.supplier || 'Hóa đơn'} (${items.length} món)!`);
+            setStatusMessage(`✨ AI Gemini Vision đã đọc thành công: ${parsed.supplier || 'Hóa đơn'} (${items.length} món)!`);
             setIsProcessing(false);
             return;
           }
+        } else if (lastErrorMsg) {
+          setStatusMessage(`⚠️ Gọi AI Gemini Vision thất bại (${lastErrorMsg}). Đang chuyển sang OCR nội bộ...`);
+          await new Promise((r) => setTimeout(r, 1200));
         }
-      } catch (err) {
-        console.warn('Gemini API call failed, falling back to local OCR engine:', err);
+      } catch (err: any) {
+        console.warn('Gemini API call failed:', err);
+        setStatusMessage(`⚠️ AI Gemini gặp lỗi: ${err?.message || 'Không thể kết nối'}. Đang chuyển sang OCR nội bộ...`);
+        await new Promise((r) => setTimeout(r, 1200));
       }
+    } else {
+      setStatusMessage('💡 Chưa nhập Gemini API Key. Đang quét nhận diện văn bản (OCR nội bộ)...');
     }
 
-    // 2. Local OCR with Tesseract.js (Offline / Signature & Strict Heuristic Engine)
+    // 2. Local OCR with Tesseract.js (Offline / Genuine Line-by-Line Parser without hardcoded mock overrides)
     try {
-      setStatusMessage('Đang quét nhận diện văn bản (OCR nội bộ)...');
+      setStatusMessage('Đang quét nhận diện văn bản trên ảnh bằng OCR nội bộ...');
       const ocrResult = await Tesseract.recognize(dataUrl, 'eng', {
         logger: (m) => {
           if (m.status === 'recognizing text') {
@@ -323,213 +382,142 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
       const extractedText = (ocrResult.data.text || '').toLowerCase();
       console.log('OCR text extracted:', extractedText);
 
-      // A. Extract Date from text (e.g. "Ngày 20 tháng 09 năm 2026" or "11:21 20/9/26" or "22/9")
+      // A. Extract Date from text
       let foundDate = '';
       const dateMatch =
         extractedText.match(/(?:ngày|ngay)\s*(\d{1,2})\s*(?:tháng|thang)\s*(\d{1,2})/i) ||
         extractedText.match(/(\d{1,2})[/.-](\d{1,2})(?:[/.-]\d{2,4})?/);
       if (dateMatch && dateMatch[1] && dateMatch[2]) {
         foundDate = `${parseInt(dateMatch[1])}/${parseInt(dateMatch[2])}`;
+        setReceiptDate(foundDate);
       }
 
-      // B. Template Matching with Deep Footprint Signatures
-      // 1. Check for Keyfoods Viet / Keygroup (media_1790188514962)
-      const isKeyfood =
-        extractedText.includes('keyfood') ||
-        extractedText.includes('keyfoods') ||
-        extractedText.includes('keygroup') ||
-        extractedText.includes('kgkfv') ||
-        extractedText.includes('kiotviet') ||
-        extractedText.includes('kionh') ||
-        extractedText.includes('kgklv') ||
-        extractedText.includes('vlmk') ||
-        extractedText.includes('vimk') ||
-        extractedText.includes('rut suon') ||
-        extractedText.includes('rút sườn') ||
-        extractedText.includes('ba chi heo') ||
-        extractedText.includes('ba chỉ heo') ||
-        extractedText.includes('đại mỗ') ||
-        extractedText.includes('dai mo') ||
-        extractedText.includes('dương nội') ||
-        extractedText.includes('duong noi') ||
-        extractedText.includes('tbclk') ||
-        extractedText.includes('hd015521') ||
-        extractedText.includes('hdo15521') ||
-        extractedText.includes('kt3kgr') ||
-        extractedText.includes('9955566689999');
+      // B. Intelligent Category & Supplier Matching (WITHOUT replacing actual items with mock items!)
+      const rawLines = ocrResult.data.text
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 2);
 
-      if (isKeyfood) {
-        const finalDate = foundDate || '20/9';
-        setSupplierName('CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI QUỐC TẾ KEYGROUP (Keyfoods Viet)');
-        setReceiptDate(finalDate);
-        setSelectedCatId(3); // Category 3: 삼겹살 - 쪽갈비 - KEYFOOD
-        setScannedItems([
-          {
-            id: '1',
-            dateStr: finalDate,
-            itemName: 'Ba chỉ heo có da rút sườn Nga - Vlmk Đông Lạnh (thùng mã cân)',
-            unit: 'kg',
-            quantity: 24.56,
-            unitPrice: 113400,
-            taxRate: 0,
-            taxAmount: 0,
-            amount: 2785104,
-            totalPayment: 2785104,
-          },
-        ]);
-        setStatusMessage('✅ Đã nhận diện chuẩn xác: Hóa đơn NPP KEYFOOD (Keyfoods Viet) - 2.785.104 VNĐ!');
-        setIsProcessing(false);
-        return;
+      // Guess supplier name from first 5 lines
+      let detectedSupplier = '';
+      for (let i = 0; i < Math.min(5, rawLines.length); i++) {
+        const l = rawLines[i];
+        const lower = l.toLowerCase();
+        if (
+          !lower.includes('phiếu') &&
+          !lower.includes('hóa đơn') &&
+          !lower.includes('bán hàng') &&
+          !lower.includes('ngày') &&
+          !lower.includes('stt') &&
+          l.length >= 4
+        ) {
+          detectedSupplier = l;
+          break;
+        }
+      }
+      if (detectedSupplier) {
+        setSupplierName(detectedSupplier);
       }
 
-      // 2. Check for ONEMARKET / Korean Mart (media_1790187649275)
-      const isOneMarket =
-        extractedText.includes('onemarket') ||
-        extractedText.includes('one market') ||
-        extractedText.includes('mjsoft') ||
-        extractedText.includes('kim chi') ||
-        extractedText.includes('nuoc gao') ||
-        extractedText.includes('buoi sang') ||
-        extractedText.includes('아침햇살') ||
-        extractedText.includes('포기김치') ||
-        extractedText.includes('8801');
-
-      if (isOneMarket) {
-        const finalDate = foundDate || '22/9';
-        setSupplierName('ONEMARKET - 원마켓');
-        setReceiptDate(finalDate);
-        setSelectedCatId(10); // Category 10: 원마켓 (One Market)
-        setScannedItems(SAMPLE_ONEMARKET_ITEMS.map((item) => ({ ...item, dateStr: finalDate })));
-        setStatusMessage('✅ Đã nhận diện chuẩn xác: Hóa đơn Siêu thị Hàn Quốc ONEMARKET (원마켓) - 1.736.000 VNĐ!');
-        setIsProcessing(false);
-        return;
+      // Auto match Category by keywords
+      if (extractedText.includes('keyfood') || extractedText.includes('keyfoods') || extractedText.includes('keygroup')) {
+        setSelectedCatId(3); // KEYFOOD
+      } else if (extractedText.includes('onemarket') || extractedText.includes('one market') || extractedText.includes('kim chi')) {
+        setSelectedCatId(10); // One Market
+      } else if (extractedText.includes('phung ba') || extractedText.includes('phùng bá') || extractedText.includes('rau')) {
+        setSelectedCatId(1); // Rau
+      } else if (extractedText.includes('an phat') || extractedText.includes('an phát') || extractedText.includes('swift')) {
+        setSelectedCatId(4); // An Phát
+      } else if (extractedText.includes('gas') || extractedText.includes('petrolimex')) {
+        setSelectedCatId(2); // Gas
+      } else if (extractedText.includes('khấu') || extractedText.includes('má heo') || extractedText.includes('nọng')) {
+        setSelectedCatId(5); // Khấu - Má heo
+      } else if (extractedText.includes('soju') || extractedText.includes('chum churum') || extractedText.includes('jinro')) {
+        setSelectedCatId(6); // Rượu Soju
+      } else if (extractedText.includes('ngô') || extractedText.includes('bắp')) {
+        setSelectedCatId(7); // Ngô
+      } else if (extractedText.includes('dương xỉ') || extractedText.includes('bột ớt') || extractedText.includes('gochugaru')) {
+        setSelectedCatId(8); // Dương xỉ
+      } else if (extractedText.includes('nước ngọt') || extractedText.includes('coca') || extractedText.includes('pepsi')) {
+        setSelectedCatId(9); // Nước ngọt
+      } else if (extractedText.includes('nước rửa bát') || extractedText.includes('lau sàn') || extractedText.includes('nước rửa')) {
+        setSelectedCatId(11); // Nước rửa bát
+      } else if (extractedText.includes('rượu mơ') || extractedText.includes('rượu việt') || extractedText.includes('táo mèo')) {
+        setSelectedCatId(12); // Rượu Việt
       }
 
-      // 3. Check for Phùng Bá Tuyển / Vegetables (media_1790187030915)
-      const isPhungBaTuyen =
-        extractedText.includes('phung ba') ||
-        extractedText.includes('phùng bá') ||
-        extractedText.includes('tuyen') ||
-        extractedText.includes('tuyển') ||
-        extractedText.includes('xa lach') ||
-        extractedText.includes('xà lách') ||
-        extractedText.includes('nhip') ||
-        extractedText.includes('nhíp') ||
-        extractedText.includes('rau củ') ||
-        extractedText.includes('rau - củ') ||
-        extractedText.includes('tay mo');
-
-      if (isPhungBaTuyen) {
-        const finalDate = foundDate || '23/9';
-        setSupplierName('HKD: PHÙNG BÁ TUYỂN (RAU - CỦ - QUẢ)');
-        setReceiptDate(finalDate);
-        setSelectedCatId(1); // Category 1: 야채 (Rau)
-        setScannedItems(SAMPLE_HANDWRITTEN_ITEMS.map((item) => ({ ...item, dateStr: finalDate })));
-        setStatusMessage('✅ Đã nhận diện chuẩn xác: Hóa đơn Rau củ viết tay Phùng Bá Tuyển - 559.000 VNĐ!');
-        setIsProcessing(false);
-        return;
-      }
-
-      // 4. Check for NPP An Phát (Beef Swift)
-      const isAnPhat =
-        extractedText.includes('an phat') ||
-        extractedText.includes('an phát') ||
-        extractedText.includes('swift') ||
-        extractedText.includes('suon bo') ||
-        extractedText.includes('sườn bò') ||
-        extractedText.includes('ba chi bo') ||
-        extractedText.includes('ba chỉ bò');
-
-      if (isAnPhat) {
-        const finalDate = foundDate || '3/9';
-        setSupplierName('NPP AN PHÁT');
-        setReceiptDate(finalDate);
-        setSelectedCatId(4); // Category 4: AN PHÁT
-        setScannedItems(SAMPLE_ANPHAT_ITEMS.map((item) => ({ ...item, dateStr: finalDate })));
-        setStatusMessage('✅ Đã nhận diện chuẩn xác: Hóa đơn Nhà phân phối AN PHÁT (Thịt Bò Mỹ)!');
-        setIsProcessing(false);
-        return;
-      }
-
-      // 5. Check for Gas Petrolimex
-      const isGas =
-        extractedText.includes('gas') ||
-        extractedText.includes('petrolimex') ||
-        extractedText.includes('bình gas') ||
-        extractedText.includes('binh gas');
-
-      if (isGas) {
-        const finalDate = foundDate || '5/9';
-        setSupplierName('CỬA HÀNG GAS CÔNG NGHIỆP');
-        setReceiptDate(finalDate);
-        setSelectedCatId(2); // Category 2: Gas
-        setScannedItems(SAMPLE_GAS_ITEMS.map((item) => ({ ...item, dateStr: finalDate })));
-        setStatusMessage('✅ Đã nhận diện chuẩn xác: Hóa đơn Gas công nghiệp!');
-        setIsProcessing(false);
-        return;
-      }
-
-      // C. Generic Fallback Parsing with STRICT Noise Filter & Boundary Enforcement
-      // Blacklist terms that MUST NEVER be converted to item rows
+      // C. Genuine Line-by-Line Parsing with Strict Noise Blacklist
       const NOISE_BLACKLIST = [
-        // Bank info & Payment
         'mb bank', 'vietcombank', 'techcombank', 'bidv', 'agribank', 'acb', 'vpbank', 'tpbank', 'shb',
         'tài khoản', 'tai khoan', 'stk', 'số tk', 'so tk', 'thụ hưởng', 'thu huong', 'qr', 'vat',
-        // Phone / hotline
         'hotline', 'hot line', 'điện thoại', 'dien thoai', 'tel', 'sđt', 'sdt', 'phone',
-        // Address & locations
         'địa chỉ', 'dia chi', 'khu vực', 'khu vuc', 'parking zone', 'smart city', 'vinhomes', 'nam từ liêm',
         'dương nội', 'duong noi', 'hà nội', 'ha noi', 'tái định cư', 'lô g41', 'lk19', 'đại mỗ', 'dai mo',
-        // Document metadata
         'phiếu giao nhận', 'phieu giao nhan', 'phiếu xuất kho', 'phieu xuat kho', 'phiếu bán', 'hóa đơn',
         'hoa don', 'số hóa đơn', 'so hoa don', 'hd0', 'mã hóa đơn', 'khách hàng', 'khach hang',
         'nhà hàng', 'nha hang', 'tầng hai', 'tang hai', 'nvbh', 'nhân viên', 'bán hàng', 'ban hang',
-        // Table headers & totals
         'tên sản phẩm', 'ten san pham', 'tên hàng', 'ten hang', 'mặt hàng', 'mat hang', 'đơn giá', 'don gia',
         'thành tiền', 'thanh tien', 'đvt', 'dvt', 'số lượng', 'so luong', 'stt',
         'tổng tiền', 'tong tien', 'tổng cộng', 'tong cong', 'tổng thanh toán', 'tong thanh toan',
         'tiền hàng', 'tien hang', 'bằng chữ', 'bang chu', 'đồng chẵn', 'dong chan',
-        // Footers & signatures
         'người nhận', 'nguoi nhan', 'người mua', 'nguoi mua', 'người bán', 'nguoi ban', 'thủ kho', 'thu kho',
         'kế toán', 'ke toan', 'chữ ký', 'chu ky', 'ngày tháng', 'ngay thang', 'tháng', 'năm',
         'http', 'https', 'kiotviet', 'www.', '.vn', '.com'
       ];
 
-      const lines = ocrResult.data.text.split('\n').filter((l) => l.trim().length > 3);
+      const COMMON_UNITS = ['kg', 'thùng', 'chai', 'lon', 'bìa', 'gói', 'quả', 'can', 'hộp', 'bó', 'cây', 'con', 'đĩa', 'bịch', 'túi'];
+
       const parsedGenericItems: ScannedItem[] = [];
 
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
+      for (const line of rawLines) {
         const lowerLine = line.toLowerCase();
+        if (NOISE_BLACKLIST.some((term) => lowerLine.includes(term))) continue;
 
-        // 1. Skip any line matching blacklist keywords
-        const isBlacklisted = NOISE_BLACKLIST.some((term) => lowerLine.includes(term));
-        if (isBlacklisted) continue;
-
-        // 2. Parse numbers (Quantity, Unit Price, Amount)
+        // Find numbers
         const numbers = line.match(/\d+([.,]\d+)*/g);
         if (numbers && numbers.length >= 2) {
-          // Clean product name
-          const cleanName = line.replace(/\d+([.,]\d+)*/g, '').replace(/[^\p{L}\s\-_()]/gu, '').trim();
+          // Detect unit
+          let detectedUnit = 'kg';
+          for (const u of COMMON_UNITS) {
+            if (new RegExp(`\\b${u}\\b`, 'i').test(lowerLine)) {
+              detectedUnit = u;
+              break;
+            }
+          }
+
+          // Clean item name (remove numbers and common punctuation)
+          let cleanName = line.replace(/\d+([.,]\d+)*/g, '').replace(/[^\p{L}\s\-_()]/gu, '').trim();
           if (cleanName.length < 3) continue;
 
-          // Quantity must be reasonable: 0.01 <= qty <= 500
-          const rawQty = numbers[0].replace(',', '.');
-          const qty = parseFloat(rawQty) || 0;
-          if (qty <= 0 || qty > 500) continue;
+          // Determine index offset if numbers[0] is just STT (1, 2, 3...)
+          let numIndex = 0;
+          if (numbers.length >= 3) {
+            const firstNum = parseInt(numbers[0]);
+            if (firstNum >= 1 && firstNum <= 50 && !numbers[0].includes('.') && !numbers[0].includes(',')) {
+              numIndex = 1; // Skip STT
+            }
+          }
 
-          // Unit price must be reasonable: 500 <= price <= 5,000,000
-          const rawPrice = numbers[1].replace(/[.,]/g, '');
+          const rawQty = numbers[numIndex]?.replace(',', '.') || '1';
+          const qty = parseFloat(rawQty) || 1;
+          if (qty <= 0 || qty > 1000) continue;
+
+          const rawPrice = numbers[numIndex + 1]?.replace(/[.,]/g, '') || '0';
           const price = parseFloat(rawPrice) || 0;
-          if (price < 500 || price > 5000000) continue;
+          if (price < 500 || price > 50000000) continue;
 
-          const amount = Math.round(qty * price);
+          let amount = Math.round(qty * price);
+          if (numbers.length > numIndex + 2) {
+            const rawAmount = numbers[numIndex + 2].replace(/[.,]/g, '');
+            const parsedAmount = parseFloat(rawAmount) || 0;
+            if (parsedAmount > 0) amount = parsedAmount;
+          }
 
           parsedGenericItems.push({
             id: String(parsedGenericItems.length + 1),
             dateStr: foundDate || receiptDate || '20/9',
             itemName: cleanName,
-            unit: 'kg',
+            unit: detectedUnit,
             quantity: qty,
             unitPrice: price,
             taxRate: 0,
@@ -542,13 +530,12 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
 
       if (parsedGenericItems.length > 0) {
         setScannedItems(parsedGenericItems);
-        setStatusMessage(`✅ Đã bóc tách tự động ${parsedGenericItems.length} dòng mặt hàng chuẩn từ ảnh!`);
+        setStatusMessage(`✅ Đã bóc tách được ${parsedGenericItems.length} dòng hàng từ ảnh! Bạn có thể chỉnh sửa nếu cần.`);
       } else {
-        // Fallback default row
         setScannedItems([
-          { id: '1', dateStr: foundDate || receiptDate || '20/9', itemName: 'Hàng hóa 1', unit: 'kg', quantity: 1, unitPrice: 50000, taxRate: 0, taxAmount: 0, amount: 50000, totalPayment: 50000 },
+          { id: '1', dateStr: foundDate || receiptDate || '20/9', itemName: 'Mặt hàng 1', unit: 'kg', quantity: 1, unitPrice: 50000, taxRate: 0, taxAmount: 0, amount: 50000, totalPayment: 50000 },
         ]);
-        setStatusMessage('⚠️ Đã quét văn bản. Bạn hãy kiểm tra hoặc chọn mẫu hóa đơn ở thanh trên.');
+        setStatusMessage('⚠️ OCR nội bộ nhận diện độ nét chưa đủ. Bạn hãy cài Gemini API Key để AI đọc tự động chuẩn 100%!');
       }
     } catch (ocrErr) {
       console.error('OCR Error:', ocrErr);
@@ -716,11 +703,15 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-xl flex items-center gap-1.5 text-emerald-100 transition"
+              className={`px-3 py-1.5 text-xs rounded-xl flex items-center gap-1.5 font-medium transition cursor-pointer ${
+                apiKey.trim()
+                  ? 'bg-emerald-700/80 hover:bg-emerald-700 text-white border border-emerald-500/40'
+                  : 'bg-amber-500/90 hover:bg-amber-500 text-slate-950 font-bold border border-amber-300'
+              }`}
               title="Cài đặt Google Gemini API Key"
             >
               <Key className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Cài API Key AI</span>
+              <span>{apiKey.trim() ? '✨ Gemini AI: Đang Bật' : '⚡ Nhập Gemini API Key'}</span>
             </button>
             <button
               onClick={onClose}
@@ -730,6 +721,24 @@ QUY TẮC BẮT BUỘC ĐỂ KHÔNG BỊ SAI SỐ VÀ NHẢM NHÍ:
             </button>
           </div>
         </div>
+
+        {/* Notice banner if API key is not configured */}
+        {!apiKey.trim() && !showApiKeyInput && (
+          <div className="bg-amber-50/90 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Khuyên dùng:</strong> Cài đặt <strong>Google Gemini API Key</strong> (miễn phí) để AI nhận diện chuẩn 100% mọi hóa đơn viết tay & in nhiệt.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowApiKeyInput(true)}
+              className="text-amber-800 font-bold underline hover:text-amber-950 shrink-0 ml-2"
+            >
+              Nhập mã ngay
+            </button>
+          </div>
+        )}
 
         {/* Quick Template Selector Bar */}
         <div className="bg-slate-100 border-b border-slate-200 p-2.5 px-4 flex items-center gap-2 overflow-x-auto text-xs">
