@@ -1151,25 +1151,6 @@ export const InvoiceManager: React.FC = () => {
                 </tr>
               </tbody>
             </table>
-
-            {/* Chữ ký xác nhận gửi sếp */}
-            <div className="mt-8 pt-4 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-xs">
-              <div>
-                <div className="font-bold text-slate-700">Người lập biểu</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
-                <div className="h-14"></div>
-              </div>
-              <div>
-                <div className="font-bold text-slate-700">Quản lý thu mua / Bếp</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
-                <div className="h-14"></div>
-              </div>
-              <div>
-                <div className="font-bold text-slate-700">Ban Giám Đốc phê duyệt</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & đóng dấu)</div>
-                <div className="h-14"></div>
-              </div>
-            </div>
           </div>
           </div>
 
@@ -2730,25 +2711,6 @@ export const InvoiceManager: React.FC = () => {
                 </tbody>
               </table>
             )}
-
-            {/* Chữ ký xác nhận gửi sếp */}
-            <div className="mt-8 pt-4 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-xs">
-              <div>
-                <div className="font-bold text-slate-700">Người lập biểu</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
-                <div className="h-14"></div>
-              </div>
-              <div>
-                <div className="font-bold text-slate-700">Quản lý thu mua / Bếp</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & ghi rõ họ tên)</div>
-                <div className="h-14"></div>
-              </div>
-              <div>
-                <div className="font-bold text-slate-700">Ban Giám Đốc phê duyệt</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">(Ký & đóng dấu)</div>
-                <div className="h-14"></div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
