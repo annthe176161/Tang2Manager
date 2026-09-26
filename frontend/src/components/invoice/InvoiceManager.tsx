@@ -1343,7 +1343,12 @@ export const InvoiceManager: React.FC = () => {
                 </thead>
                 <tbody>
                   {currentItems.map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-blue-50/50 transition">
+                    <tr
+                      key={item.id}
+                      onClick={() => handleOpenEditModal(item)}
+                      className="hover:bg-blue-100/70 transition cursor-pointer select-none"
+                      title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                    >
                       <td className="border border-gray-500 py-2 px-2 text-center font-bold">{idx + 1}</td>
                       <td className="border border-gray-500 py-2 px-2 text-center font-bold">{item.dateStr}</td>
                       <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -1376,14 +1381,20 @@ export const InvoiceManager: React.FC = () => {
                       <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => handleOpenEditModal(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(item);
+                            }}
                             className="p-1 hover:text-blue-600 rounded text-slate-500"
                             title="Sửa"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(item.id);
+                            }}
                             className="p-1 hover:text-red-600 rounded text-slate-500"
                             title="Xóa"
                           >
@@ -1417,7 +1428,12 @@ export const InvoiceManager: React.FC = () => {
                 </thead>
                 <tbody>
                   {currentItems.map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-blue-50/50 transition">
+                    <tr
+                      key={item.id}
+                      onClick={() => handleOpenEditModal(item)}
+                      className="hover:bg-blue-100/70 transition cursor-pointer select-none"
+                      title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                    >
                       <td className="border border-gray-500 py-2 px-2 text-center font-bold">{idx + 1}</td>
                       <td className="border border-gray-500 py-2 px-2 text-center font-bold">{item.dateStr}</td>
                       <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -1442,14 +1458,20 @@ export const InvoiceManager: React.FC = () => {
                       <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => handleOpenEditModal(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(item);
+                            }}
                             className="p-1 hover:text-blue-600 rounded text-slate-500"
                             title="Sửa"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(item.id);
+                            }}
                             className="p-1 hover:text-red-600 rounded text-slate-500"
                             title="Xóa"
                           >
@@ -1516,7 +1538,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-semibold">{item.unit || 'Can'}</td>
@@ -1532,14 +1559,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -1631,7 +1664,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -1651,14 +1689,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -1748,7 +1792,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -1767,14 +1816,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -1862,14 +1917,22 @@ export const InvoiceManager: React.FC = () => {
                     groupedDailyItems.map((group, groupIdx) => (
                       <React.Fragment key={group.dateStr || groupIdx}>
                         {group.items.map((item, itemIdx) => (
-                          <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                          <tr
+                            key={item.id}
+                            onClick={() => handleOpenEditModal(item)}
+                            className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                            title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                          >
                             <td className="border border-gray-500 py-2 px-3 text-center font-bold text-gray-900">
                               {itemIdx === 0 && (
                                 <div className="flex items-center justify-center gap-1.5">
                                   <span>{item.dateStr}</span>
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal);
+                                    }}
                                     className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition print:hidden screenshot-exclude cursor-pointer"
                                     title={`Xóa toàn bộ hóa đơn ngày ${item.dateStr} (${group.items.length} mặt hàng)`}
                                   >
@@ -1913,14 +1976,20 @@ export const InvoiceManager: React.FC = () => {
                             <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => handleOpenEditModal(item)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditModal(item);
+                                  }}
                                   className="p-1 hover:text-blue-600 rounded text-slate-500"
                                   title="Sửa"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteItem(item.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteItem(item.id);
+                                  }}
                                   className="p-1 hover:text-red-600 rounded text-slate-500"
                                   title="Xóa"
                                 >
@@ -1996,7 +2065,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-semibold text-gray-700">{item.note || 'Soju hoa quả'}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -2013,14 +2087,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -2094,7 +2174,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold text-gray-900">{item.dateStr}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">
@@ -2109,14 +2194,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -2208,7 +2299,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-semibold text-slate-700">{item.note || '671'}</td>
@@ -2226,14 +2322,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -2287,7 +2389,12 @@ export const InvoiceManager: React.FC = () => {
                     </tr>
                   ) : (
                     currentItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-blue-50/50 transition">
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-blue-100/70 transition cursor-pointer select-none"
+                        title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                      >
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr || ''}</td>
                         <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
                         <td className="border border-gray-500 py-2 px-3 text-center font-bold">
@@ -2316,14 +2423,20 @@ export const InvoiceManager: React.FC = () => {
                         <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => handleOpenEditModal(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
                               className="p-1 hover:text-blue-600 rounded text-slate-500"
                               title="Sửa"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
                               className="p-1 hover:text-red-600 rounded text-slate-500"
                               title="Xóa"
                             >
@@ -2423,7 +2536,12 @@ export const InvoiceManager: React.FC = () => {
                     currentItems.map((item, idx) => {
                       const finalItemTotal = item.totalPayment > 0 ? item.totalPayment : (item.amount - (item.depositFee || 0));
                       return (
-                        <tr key={item.id} className="hover:bg-emerald-50/40 transition">
+                        <tr
+                          key={item.id}
+                          onClick={() => handleOpenEditModal(item)}
+                          className="hover:bg-emerald-100/70 transition cursor-pointer select-none"
+                          title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                        >
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">{idx + 1}</td>
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">{item.dateStr}</td>
                           <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">{item.itemName}</td>
@@ -2446,14 +2564,20 @@ export const InvoiceManager: React.FC = () => {
                           <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                             <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => handleOpenEditModal(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditModal(item);
+                                }}
                                 className="p-1 hover:text-blue-600 rounded text-slate-500"
                                 title="Sửa"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => handleDeleteItem(item.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteItem(item.id);
+                                }}
                                 className="p-1 hover:text-red-600 rounded text-slate-500"
                                 title="Xóa"
                               >
@@ -2509,7 +2633,12 @@ export const InvoiceManager: React.FC = () => {
                   {groupedDailyItems.map((group, groupIdx) => (
                     <React.Fragment key={group.dateStr || groupIdx}>
                       {group.items.map((item, itemIdx) => (
-                        <tr key={item.id} className="hover:bg-blue-50/40 transition">
+                        <tr
+                          key={item.id}
+                          onClick={() => handleOpenEditModal(item)}
+                          className="hover:bg-blue-100/70 transition cursor-pointer select-none"
+                          title="Bấm vào dòng để chỉnh sửa mặt hàng này"
+                        >
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">{itemIdx + 1}</td>
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">
                             {itemIdx === 0 && (
@@ -2517,7 +2646,10 @@ export const InvoiceManager: React.FC = () => {
                                 <span>{item.dateStr}</span>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal);
+                                  }}
                                   className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition print:hidden screenshot-exclude cursor-pointer"
                                   title={`Xóa toàn bộ hóa đơn ngày ${item.dateStr} (${group.items.length} mặt hàng)`}
                                 >
@@ -2552,14 +2684,20 @@ export const InvoiceManager: React.FC = () => {
                           <td className="border border-gray-500 py-2 px-2 text-center print:hidden screenshot-exclude">
                             <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => handleOpenEditModal(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditModal(item);
+                                }}
                                 className="p-1 hover:text-blue-600 rounded text-slate-500"
                                 title="Sửa"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => handleDeleteItem(item.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteItem(item.id);
+                                }}
                                 className="p-1 hover:text-red-600 rounded text-slate-500"
                                 title="Xóa"
                               >
