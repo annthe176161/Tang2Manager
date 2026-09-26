@@ -37,6 +37,44 @@ const INITIAL_CATEGORIES: InvoiceCategory[] = [
   { id: 12, name: '베트남 술 (Rượu Việt)', categoryType: 'Supplier', isPaid: false, displayOrder: 12, fixedAmount: 0 },
 ];
 
+// Helper to parse date string (e.g. "15/9", "19/9", "25/9/2026", "2026-09-15", "15") into comparable number (e.g. 20260915)
+export const parseDateOrder = (dateStr?: string): number => {
+  if (!dateStr) return 999999;
+  const str = dateStr.trim();
+
+  // Format DD/MM/YYYY or D/M/YYYY or D/M
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10);
+    let year = dmyMatch[3] ? parseInt(dmyMatch[3], 10) : 2026;
+    if (year < 100) year += 2000;
+    return year * 10000 + month * 100 + day;
+  }
+
+  // Format YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10);
+    const day = parseInt(ymdMatch[3], 10);
+    return year * 10000 + month * 100 + day;
+  }
+
+  // Pure day number (e.g. "15")
+  const numMatch = str.match(/^\d+$/);
+  if (numMatch) {
+    return parseInt(str, 10);
+  }
+
+  const anyNum = str.match(/\d+/);
+  if (anyNum) {
+    return parseInt(anyNum[0], 10);
+  }
+
+  return 999999;
+};
+
 const yearsList = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031];
 
 export const InvoiceManager: React.FC = () => {
@@ -124,7 +162,18 @@ export const InvoiceManager: React.FC = () => {
   }, [activeCategoryId, selectedMonth, selectedYear]);
 
   const activeCategory = categories.find((c) => c.id === activeCategoryId);
-  const currentItems = activeCategoryId ? categoryItems[activeCategoryId] || [] : [];
+
+  // Automatically sort items chronologically by date (e.g. Day 15 before Day 19)
+  const currentItems = useMemo(() => {
+    if (!activeCategoryId) return [];
+    const list = categoryItems[activeCategoryId] || [];
+    return [...list].sort((a, b) => {
+      const orderA = parseDateOrder(a.dateStr);
+      const orderB = parseDateOrder(b.dateStr);
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.displayOrder || a.id || 0) - (b.displayOrder || b.id || 0);
+    });
+  }, [activeCategoryId, categoryItems]);
 
   // Toggle paid checkbox
   const handleTogglePaid = async (catId: number, e: React.MouseEvent) => {
@@ -154,7 +203,7 @@ export const InvoiceManager: React.FC = () => {
     return categories.reduce((sum, c) => sum + getCategoryTotal(c), 0);
   }, [categories, categoryItems]);
 
-  // Group items by Date for Daily view (Image 2)
+  // Group items by Date for Daily view (Image 2) - Always sorted chronologically
   const groupedDailyItems = useMemo(() => {
     const groups: { dateStr: string; items: InvoiceItem[]; dayTotal: number }[] = [];
     const dateMap = new Map<string, InvoiceItem[]>();
@@ -169,6 +218,9 @@ export const InvoiceManager: React.FC = () => {
       const dayTotal = items.reduce((s, i) => s + (i.totalPayment > 0 ? i.totalPayment : i.amount), 0);
       groups.push({ dateStr, items, dayTotal });
     });
+
+    // Ensure groups are always sorted chronologically by date
+    groups.sort((a, b) => parseDateOrder(a.dateStr) - parseDateOrder(b.dateStr));
 
     return groups;
   }, [currentItems]);

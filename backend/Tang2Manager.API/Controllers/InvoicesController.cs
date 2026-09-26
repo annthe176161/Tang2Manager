@@ -156,16 +156,33 @@ public class InvoicesController : ControllerBase
         return NoContent();
     }
 
+    private static int ParseDateOrder(string? dateStr)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr)) return 999999;
+        var parts = dateStr.Trim().Split(new[] { '/', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2 && int.TryParse(parts[0], out var day) && int.TryParse(parts[1], out var month))
+        {
+            var year = parts.Length >= 3 && int.TryParse(parts[2], out var y) ? y : 2026;
+            return year * 10000 + month * 100 + day;
+        }
+        if (int.TryParse(dateStr.Trim(), out var d)) return d;
+        return 999999;
+    }
+
     [HttpGet("items/{categoryId}")]
     public async Task<ActionResult<IEnumerable<InvoiceItem>>> GetItemsByCategory(int categoryId, [FromQuery] int month = 9, [FromQuery] int year = 2026)
     {
         var items = await _context.InvoiceItems
             .Where(i => i.CategoryId == categoryId && i.Year == year && i.Month == month)
-            .OrderBy(i => i.DisplayOrder)
-            .ThenBy(i => i.Id)
             .ToListAsync();
 
-        return Ok(items);
+        var sorted = items
+            .OrderBy(i => ParseDateOrder(i.DateStr))
+            .ThenBy(i => i.DisplayOrder)
+            .ThenBy(i => i.Id)
+            .ToList();
+
+        return Ok(sorted);
     }
 
     [HttpPost("items")]
