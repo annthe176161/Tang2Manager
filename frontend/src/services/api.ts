@@ -118,6 +118,13 @@ export const invoiceApi = {
     return res.data;
   },
 
+  deleteItemsByDate: async (categoryId: number, dateStr: string, month: number, year: number) => {
+    const res = await api.delete('/invoices/items/by-date', {
+      params: { categoryId, dateStr, month, year },
+    });
+    return res.data;
+  },
+
   clearInvoiceData: async (month: number, year: number, categoryId?: number) => {
     const res = await api.delete('/invoices/clear', {
       params: { month, year, ...(categoryId ? { categoryId } : {}) },

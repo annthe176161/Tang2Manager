@@ -62,6 +62,10 @@ export const InvoiceManager: React.FC = () => {
   // Modal Xóa / Làm Sạch Dữ Liệu
   const [showClearModal, setShowClearModal] = useState<boolean>(false);
 
+  // Modal Xóa Hóa Đơn Theo Ngày
+  const [showDeleteDateModal, setShowDeleteDateModal] = useState<boolean>(false);
+  const [isDeletingDate, setIsDeletingDate] = useState<boolean>(false);
+
   // Xuất trọn bộ ảnh (.ZIP)
   const [isExportingZip, setIsExportingZip] = useState<boolean>(false);
   const [zipProgress, setZipProgress] = useState<{ current: number; total: number; name: string } | null>(null);
@@ -311,6 +315,56 @@ export const InvoiceManager: React.FC = () => {
         [activeCategoryId]: (prev[activeCategoryId] || []).filter((i) => i.id !== itemId),
       }));
       showToast('Đã xóa mặt hàng!');
+    }
+  };
+
+  // Distinct dates in current category with their item count and total money
+  const availableDates = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    currentItems.forEach((it) => {
+      const d = it.dateStr ? it.dateStr.trim() : 'Chưa đặt ngày';
+      const amount = it.totalPayment > 0 ? it.totalPayment : (it.amount || 0);
+      const existing = map.get(d) || { count: 0, total: 0 };
+      map.set(d, { count: existing.count + 1, total: existing.total + amount });
+    });
+    return Array.from(map.entries()).map(([dateStr, stats]) => ({
+      dateStr,
+      count: stats.count,
+      total: stats.total,
+    }));
+  }, [currentItems]);
+
+  // Handler for deleting all items of a specific date in current category
+  const handleDeleteByDate = async (dateStr: string, itemCount?: number, totalAmount?: number) => {
+    if (!activeCategoryId) return;
+    const countInfo = itemCount ? ` (gồm ${itemCount} mặt hàng${totalAmount ? `, tổng ${totalAmount.toLocaleString('vi-VN')} đ` : ''})` : '';
+    const confirmMsg = `Bạn có chắc chắn muốn xóa toàn bộ hóa đơn của ngày "${dateStr}"${countInfo} không?\n\nToàn bộ các mặt hàng của ngày này sẽ bị xóa khỏi cơ sở dữ liệu!`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsDeletingDate(true);
+      await invoiceApi.deleteItemsByDate(activeCategoryId, dateStr, selectedMonth, selectedYear);
+      const freshItems = await invoiceApi.getItemsByCategory(activeCategoryId, selectedMonth, selectedYear);
+      setCategoryItems((prev) => ({
+        ...prev,
+        [activeCategoryId]: freshItems || (prev[activeCategoryId] || []).filter((i) => (i.dateStr || '').trim() !== dateStr.trim()),
+      }));
+
+      const updatedCats = await invoiceApi.getCategories(selectedMonth, selectedYear);
+      if (updatedCats && updatedCats.length > 0) setCategories(updatedCats);
+
+      setShowDeleteDateModal(false);
+      showToast(`🗑️ Đã xóa toàn bộ hóa đơn ngày ${dateStr}!`);
+    } catch (e) {
+      console.error('Error deleting items by date:', e);
+      setCategoryItems((prev) => ({
+        ...prev,
+        [activeCategoryId]: (prev[activeCategoryId] || []).filter((i) => (i.dateStr || '').trim() !== dateStr.trim()),
+      }));
+      setShowDeleteDateModal(false);
+      showToast(`Đã xóa các mặt hàng ngày ${dateStr}!`);
+    } finally {
+      setIsDeletingDate(false);
     }
   };
 
@@ -777,6 +831,18 @@ export const InvoiceManager: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Quét Hóa Đơn (AI)</span>
             </button>
+
+            {/* Xóa hóa đơn theo ngày */}
+            {activeCategory && currentItems.length > 0 && (
+              <button
+                onClick={() => setShowDeleteDateModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-xs transition hover:scale-[1.01] active:scale-[0.99] cursor-pointer whitespace-nowrap"
+                title="Xóa toàn bộ các mặt hàng của một ngày trong hóa đơn này nếu lỡ nhập nhầm"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa Theo Ngày</span>
+              </button>
+            )}
 
             {/* Ngăn cách trực quan */}
             <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block"></div>
@@ -1746,7 +1812,19 @@ export const InvoiceManager: React.FC = () => {
                         {group.items.map((item, itemIdx) => (
                           <tr key={item.id} className="hover:bg-emerald-50/40 transition">
                             <td className="border border-gray-500 py-2 px-3 text-center font-bold text-gray-900">
-                              {itemIdx === 0 ? item.dateStr : ''}
+                              {itemIdx === 0 && (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <span>{item.dateStr}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal)}
+                                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition print:hidden screenshot-exclude cursor-pointer"
+                                    title={`Xóa toàn bộ hóa đơn ngày ${item.dateStr} (${group.items.length} mặt hàng)`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
                             </td>
                             <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">
                               {item.itemName}
@@ -2382,7 +2460,19 @@ export const InvoiceManager: React.FC = () => {
                         <tr key={item.id} className="hover:bg-blue-50/40 transition">
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">{itemIdx + 1}</td>
                           <td className="border border-gray-500 py-2 px-3 text-center font-bold">
-                            {itemIdx === 0 ? item.dateStr : ''}
+                            {itemIdx === 0 && (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span>{item.dateStr}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteByDate(group.dateStr, group.items.length, group.dayTotal)}
+                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition print:hidden screenshot-exclude cursor-pointer"
+                                  title={`Xóa toàn bộ hóa đơn ngày ${item.dateStr} (${group.items.length} mặt hàng)`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td className="border border-gray-500 py-2 px-4 text-left font-bold text-gray-900">
                             {item.itemName}
@@ -2948,6 +3038,91 @@ export const InvoiceManager: React.FC = () => {
             <p className="text-[11px] text-slate-400">
               Đang tự động chụp Ultra HD bảng tổng hợp & từng hóa đơn chi tiết gửi sếp...
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: XÓA HÓA ĐƠN THEO NGÀY */}
+      {showDeleteDateModal && activeCategory && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setShowDeleteDateModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-rose-600 to-red-700 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base">Xóa Hóa Đơn Theo Ngày</h3>
+                  <p className="text-[11px] text-rose-100">
+                    Mục: {activeCategory.name} (Tháng {selectedMonth}/{selectedYear})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeleteDateModal(false)}
+                className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-sm font-bold text-white transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+                <span className="font-bold">💡 Hướng dẫn:</span> Nếu bạn lỡ quét hoặc nhập nhầm ngày nào đó, hãy nhấn nút <strong>Xóa ngày này</strong> bên dưới. Toàn bộ các dòng hàng của ngày đó sẽ được xóa sạch khỏi cơ sở dữ liệu.
+              </div>
+
+              {availableDates.length === 0 ? (
+                <div className="text-center py-6 text-sm text-slate-400 italic">
+                  Chưa có ngày nào có mặt hàng trong mục này.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {availableDates.map((item) => (
+                    <div
+                      key={item.dateStr}
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50/30 transition"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-800 flex items-center gap-2">
+                          <span className="text-sm">📅 Ngày {item.dateStr}</span>
+                          <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">
+                            {item.count} món
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-emerald-700 mt-1">
+                          Tổng tiền: {item.total.toLocaleString('vi-VN')} đ
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isDeletingDate}
+                        onClick={() => handleDeleteByDate(item.dateStr, item.count, item.total)}
+                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa ngày này</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteDateModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

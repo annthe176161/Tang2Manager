@@ -269,6 +269,44 @@ public class InvoicesController : ControllerBase
     }
 
     /// <summary>
+    /// Xóa toàn bộ các mặt hàng của một ngày cụ thể trong một danh mục (ví dụ: ngày 25/9).
+    /// </summary>
+    [HttpDelete("items/by-date")]
+    public async Task<IActionResult> DeleteItemsByDate(
+        [FromQuery] int categoryId,
+        [FromQuery] string dateStr,
+        [FromQuery] int month = 9,
+        [FromQuery] int year = 2026)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr))
+        {
+            return BadRequest("Ngày cần xóa không được để trống.");
+        }
+
+        var normalizedDate = dateStr.Trim();
+        var items = await _context.InvoiceItems
+            .Where(i => i.CategoryId == categoryId 
+                     && i.Month == month 
+                     && i.Year == year 
+                     && i.DateStr.Trim() == normalizedDate)
+            .ToListAsync();
+
+        if (!items.Any())
+        {
+            return NotFound($"Không tìm thấy mặt hàng nào trong ngày {dateStr}.");
+        }
+
+        _context.InvoiceItems.RemoveRange(items);
+        await _context.SaveChangesAsync();
+
+        return Ok(new 
+        { 
+            deletedCount = items.Count, 
+            message = $"Đã xóa thành công {items.Count} mặt hàng của ngày {dateStr}." 
+        });
+    }
+
+    /// <summary>
     /// Xóa thông tin tổng giá và các mặt hàng của tháng đang chọn.
     /// TUYỆT ĐỐI KHÔNG XÓA HẠNG MỤC và KHÔNG XÓA DỮ LIỆU CÁC THÁNG KHÁC.
     /// </summary>
