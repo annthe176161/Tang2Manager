@@ -11,6 +11,8 @@ interface SalarySummaryItem {
   baseSalary: number;
   debtAmount: number;
   debtNote?: string;
+  restaurantDebtAmount?: number;
+  restaurantDebtNote?: string;
   totalSalary: number;
 }
 
@@ -30,6 +32,7 @@ export const exportSalaryToExcel = (
   const totalHoursPay = summaryData.reduce((s, e) => s + e.hoursPay, 0);
   const totalBaseSalary = summaryData.reduce((s, e) => s + e.baseSalary, 0);
   const totalDebt = summaryData.reduce((s, e) => s + e.debtAmount, 0);
+  const totalRestaurantDebt = summaryData.reduce((s, e) => s + (e.restaurantDebtAmount || 0), 0);
   const totalFinalPayout = summaryData.reduce((s, e) => s + e.totalSalary, 0);
 
   const sheet1Data: (string | number)[][] = [
@@ -45,8 +48,10 @@ export const exportSalaryToExcel = (
       'Tổng giờ làm (Tiếng)',
       'Thành tiền giờ (VNĐ)',
       'Lương cứng (VNĐ)',
-      'Công nợ / Tạm ứng (VNĐ)',
-      'Ghi chú công nợ',
+      'NV nợ / Tạm ứng (VNĐ)',
+      'Ghi chú NV nợ',
+      'Quán nợ nhân viên (VNĐ)',
+      'Ghi chú Quán nợ',
       'TỔNG LƯƠNG THỰC LĨNH (VNĐ)',
       'Ký nhận',
     ],
@@ -64,6 +69,8 @@ export const exportSalaryToExcel = (
       emp.baseSalary > 0 ? emp.baseSalary : 0,
       emp.debtAmount > 0 ? emp.debtAmount : 0,
       emp.debtNote || '',
+      (emp.restaurantDebtAmount && emp.restaurantDebtAmount > 0) ? emp.restaurantDebtAmount : 0,
+      emp.restaurantDebtNote || '',
       emp.totalSalary,
       '',
     ]);
@@ -81,6 +88,8 @@ export const exportSalaryToExcel = (
     totalBaseSalary,
     totalDebt,
     '',
+    totalRestaurantDebt,
+    '',
     totalFinalPayout,
     '',
   ]);
@@ -97,8 +106,10 @@ export const exportSalaryToExcel = (
     { wch: 18 }, // Tổng giờ
     { wch: 20 }, // Thành tiền giờ
     { wch: 16 }, // Lương cứng
-    { wch: 20 }, // Công nợ
-    { wch: 24 }, // Ghi chú công nợ
+    { wch: 20 }, // NV nợ
+    { wch: 22 }, // Ghi chú NV nợ
+    { wch: 22 }, // Quán nợ NV
+    { wch: 24 }, // Ghi chú Quán nợ
     { wch: 26 }, // Tổng thực lĩnh
     { wch: 16 }, // Ký nhận
   ];

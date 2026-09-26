@@ -141,7 +141,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return rates;
   });
 
-  // Employee debts / advances per period
+  // Employee debts / advances per period (Nhân viên nợ / tạm ứng quán)
   const [employeeDebts, setEmployeeDebts] = useState<Record<number, { amount: number; note: string }>>(() => {
     try {
       const saved = localStorage.getItem(`tang2_salary_debts_${selectedYear}_${selectedMonth}`);
@@ -152,7 +152,18 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     return {};
   });
 
-  // Modal for editing employee rate, base salary & debt
+  // Restaurant debts to employees per period (Quán nợ tiền nhân viên - cộng vào lương)
+  const [restaurantDebts, setRestaurantDebts] = useState<Record<number, { amount: number; note: string }>>(() => {
+    try {
+      const saved = localStorage.getItem(`tang2_salary_restaurant_debts_${selectedYear}_${selectedMonth}`);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {};
+  });
+
+  // Modal for editing employee rate, base salary, debt & restaurant debt
   const [editingRateEmp, setEditingRateEmp] = useState<{
     id: number;
     name: string;
@@ -160,6 +171,8 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     base: number;
     debt: number;
     debtNote: string;
+    restaurantDebt: number;
+    restaurantDebtNote: string;
   } | null>(null);
 
   // Modal for confirming clear data
@@ -209,16 +222,19 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
   const persistToDb = async (
     ts: Record<number, DailyTimesheet[]>,
     rates: Record<number, { hourly: number; base: number }>,
-    debts: Record<number, { amount: number; note: string }>
+    debts: Record<number, { amount: number; note: string }>,
+    restDebts: Record<number, { amount: number; note: string }>
   ) => {
     const requests = employees.map((emp) => {
       const rate = rates[emp.id]?.hourly || emp.hourlyRate || 35000;
       const base = rates[emp.id]?.base || 0;
       const debt = debts[emp.id]?.amount || 0;
       const note = debts[emp.id]?.note || '';
+      const rDebt = restDebts[emp.id]?.amount || 0;
+      const rNote = restDebts[emp.id]?.note || '';
       const list = ts[emp.id] || [];
       const totalH = list.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
-      const totalSalary = totalH * rate + base - debt;
+      const totalSalary = totalH * rate + base - debt + rDebt;
 
       return {
         employeeId: emp.id,
@@ -228,6 +244,8 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         baseSalary: base,
         debtAmount: debt,
         debtNote: note,
+        restaurantDebtAmount: rDebt,
+        restaurantDebtNote: rNote,
         totalHours: totalH,
         totalSalary,
         timesheetDetailsJson: JSON.stringify(list),
@@ -252,7 +270,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     } catch (e) {
       console.error(e);
     }
-    persistToDb(updated, employeeRates, employeeDebts);
+    persistToDb(updated, employeeRates, employeeDebts, restaurantDebts);
   };
 
   // Load from SQL Server Database when month/year changes
@@ -262,6 +280,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       if (dbRecords && Array.isArray(dbRecords) && dbRecords.length > 0) {
         const newRates: Record<number, { hourly: number; base: number }> = {};
         const newDebts: Record<number, { amount: number; note: string }> = {};
+        const newRestaurantDebts: Record<number, { amount: number; note: string }> = {};
         const newTimesheets: Record<number, DailyTimesheet[]> = {};
 
         dbRecords.forEach((rec: MonthlyPayrollRecord) => {
@@ -272,6 +291,10 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
           newDebts[rec.employeeId] = {
             amount: rec.debtAmount || 0,
             note: rec.debtNote || '',
+          };
+          newRestaurantDebts[rec.employeeId] = {
+            amount: rec.restaurantDebtAmount || 0,
+            note: rec.restaurantDebtNote || '',
           };
 
           if (rec.timesheetDetailsJson) {
@@ -288,6 +311,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
 
         setEmployeeRates((prev) => ({ ...prev, ...newRates }));
         setEmployeeDebts((prev) => ({ ...prev, ...newDebts }));
+        setRestaurantDebts((prev) => ({ ...prev, ...newRestaurantDebts }));
         if (Object.keys(newTimesheets).length > 0) {
           setTimesheets((prev) => {
             const merged = { ...prev };
@@ -311,6 +335,14 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
     try {
       localStorage.setItem('tang2_salary_selected_month', String(selectedMonth));
       localStorage.setItem('tang2_salary_selected_year', String(selectedYear));
+
+      const savedDebts = localStorage.getItem(`tang2_salary_debts_${selectedYear}_${selectedMonth}`);
+      if (savedDebts) setEmployeeDebts(JSON.parse(savedDebts));
+      else setEmployeeDebts({});
+
+      const savedRestDebts = localStorage.getItem(`tang2_salary_restaurant_debts_${selectedYear}_${selectedMonth}`);
+      if (savedRestDebts) setRestaurantDebts(JSON.parse(savedRestDebts));
+      else setRestaurantDebts({});
     } catch (e) {
       console.error(e);
     }
@@ -431,10 +463,12 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
       const base = employeeRates[emp.id]?.base || 0;
       const debt = employeeDebts[emp.id]?.amount || 0;
       const debtNote = employeeDebts[emp.id]?.note || '';
+      const rDebt = restaurantDebts[emp.id]?.amount || 0;
+      const rDebtNote = restaurantDebts[emp.id]?.note || '';
       const ts = timesheets[emp.id] || [];
       const totalH = ts.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
       const hoursPay = totalH * rate;
-      const totalSalary = hoursPay + base - debt;
+      const totalSalary = hoursPay + base - debt + rDebt;
       return {
         id: emp.id,
         name: emp.fullName,
@@ -445,15 +479,18 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
         baseSalary: base,
         debtAmount: debt,
         debtNote,
+        restaurantDebtAmount: rDebt,
+        restaurantDebtNote: rDebtNote,
         totalSalary,
       };
     });
-  }, [employees, employeeRates, timesheets, employeeDebts]);
+  }, [employees, employeeRates, timesheets, employeeDebts, restaurantDebts]);
 
   const totalAllHours = allEmployeesSalarySummary.reduce((s, e) => s + e.totalHours, 0);
   const totalAllHoursPay = allEmployeesSalarySummary.reduce((s, e) => s + e.hoursPay, 0);
   const totalAllBaseSalary = allEmployeesSalarySummary.reduce((s, e) => s + e.baseSalary, 0);
   const totalAllDebt = allEmployeesSalarySummary.reduce((s, e) => s + e.debtAmount, 0);
+  const totalAllRestaurantDebt = allEmployeesSalarySummary.reduce((s, e) => s + e.restaurantDebtAmount, 0);
   const totalAllSalary = allEmployeesSalarySummary.reduce((s, e) => s + e.totalSalary, 0);
 
   // Handlers for edit day
@@ -742,6 +779,11 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     Đã trừ công nợ: {totalAllDebt.toLocaleString('vi-VN')} đ
                   </span>
                 )}
+                {totalAllRestaurantDebt > 0 && (
+                  <span className="text-[11px] text-sky-700 font-semibold bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
+                    Quán nợ NV: +{totalAllRestaurantDebt.toLocaleString('vi-VN')} đ
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -872,9 +914,15 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
-                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[140px] bg-rose-900/30">
-                    <div className="flex items-center justify-center gap-1.5 text-amber-200">
-                      <span>Công nợ / Ứng</span>
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[130px] bg-rose-900/30">
+                    <div className="flex items-center justify-center gap-1.5 text-rose-200">
+                      <span>NV nợ / Ứng</span>
+                      <span className="text-[10px] opacity-75">▼</span>
+                    </div>
+                  </th>
+                  <th className="border border-gray-500 py-3 px-3 text-center min-w-[130px] bg-sky-900/30">
+                    <div className="flex items-center justify-center gap-1.5 text-sky-200">
+                      <span>Quán nợ NV</span>
                       <span className="text-[10px] opacity-75">▼</span>
                     </div>
                   </th>
@@ -918,6 +966,8 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                           base: emp.baseSalary,
                           debt: emp.debtAmount,
                           debtNote: emp.debtNote || '',
+                          restaurantDebt: emp.restaurantDebtAmount || 0,
+                          restaurantDebtNote: emp.restaurantDebtNote || '',
                         });
                       }}
                       title="Bấm để sửa đơn giá giờ / lương cứng / công nợ"
@@ -950,6 +1000,8 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                           base: emp.baseSalary,
                           debt: emp.debtAmount,
                           debtNote: emp.debtNote || '',
+                          restaurantDebt: emp.restaurantDebtAmount || 0,
+                          restaurantDebtNote: emp.restaurantDebtNote || '',
                         });
                       }}
                       title="Bấm để sửa lương cứng / công nợ"
@@ -957,7 +1009,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                       {emp.baseSalary > 0 ? emp.baseSalary.toLocaleString('vi-VN') : ''}
                     </td>
 
-                    {/* Cột Công nợ / Tạm ứng */}
+                    {/* Cột NV nợ / Tạm ứng */}
                     <td
                       className="border border-gray-500 py-3 px-3 text-center font-bold hover:bg-rose-100/60"
                       onClick={(e) => {
@@ -969,9 +1021,11 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                           base: emp.baseSalary,
                           debt: emp.debtAmount,
                           debtNote: emp.debtNote || '',
+                          restaurantDebt: emp.restaurantDebtAmount || 0,
+                          restaurantDebtNote: emp.restaurantDebtNote || '',
                         });
                       }}
-                      title="Bấm để sửa công nợ / tạm ứng"
+                      title="Bấm để sửa nhân viên nợ / tạm ứng"
                     >
                       <div className="flex flex-col items-center justify-center">
                         <div className="flex items-center justify-center gap-1">
@@ -987,6 +1041,43 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                         {emp.debtNote ? (
                           <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] mt-0.5" title={emp.debtNote}>
                             ({emp.debtNote})
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+
+                    {/* Cột Quán nợ nhân viên */}
+                    <td
+                      className="border border-gray-500 py-3 px-3 text-center font-bold hover:bg-sky-100/60"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingRateEmp({
+                          id: emp.id,
+                          name: emp.name,
+                          hourly: emp.hourlyRate,
+                          base: emp.baseSalary,
+                          debt: emp.debtAmount,
+                          debtNote: emp.debtNote || '',
+                          restaurantDebt: emp.restaurantDebtAmount || 0,
+                          restaurantDebtNote: emp.restaurantDebtNote || '',
+                        });
+                      }}
+                      title="Bấm để sửa số tiền quán nợ nhân viên"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {emp.restaurantDebtAmount > 0 ? (
+                            <span className="text-sky-700 font-extrabold bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 text-xs">
+                              +{emp.restaurantDebtAmount.toLocaleString('vi-VN')}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">0</span>
+                          )}
+                          <Edit2 className="w-3 h-3 text-slate-400 opacity-60 hover:opacity-100" />
+                        </div>
+                        {emp.restaurantDebtNote ? (
+                          <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] mt-0.5" title={emp.restaurantDebtNote}>
+                            ({emp.restaurantDebtNote})
                           </span>
                         ) : null}
                       </div>
@@ -1017,6 +1108,9 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                   </td>
                   <td className="border border-gray-500 py-3 px-3 text-center font-black text-rose-700">
                     {totalAllDebt > 0 ? `-${totalAllDebt.toLocaleString('vi-VN')}` : '0'}
+                  </td>
+                  <td className="border border-gray-500 py-3 px-3 text-center font-black text-sky-800">
+                    {totalAllRestaurantDebt > 0 ? `+${totalAllRestaurantDebt.toLocaleString('vi-VN')}` : '0'}
                   </td>
                   <td className="border border-gray-500 py-3 px-4 text-center font-black text-emerald-950 text-base bg-emerald-100/70">
                     {totalAllSalary.toLocaleString('vi-VN')}
@@ -1053,8 +1147,23 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     Tháng {selectedMonth}/{selectedYear}
                   </span>
                 </h3>
-                <p className="text-xs text-slate-500 font-semibold">
-                  Hệ số lương: <b>{(employeeRates[activeEmployee.id]?.hourly || 40000).toLocaleString('vi-VN')} đ/h</b>
+                <p className="text-xs text-slate-500 font-semibold flex items-center gap-2 flex-wrap mt-0.5">
+                  <span>Hệ số lương: <b>{(employeeRates[activeEmployee.id]?.hourly || 40000).toLocaleString('vi-VN')} đ/h</b></span>
+                  {(employeeRates[activeEmployee.id]?.base || 0) > 0 && (
+                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      Lương cứng: +{(employeeRates[activeEmployee.id]?.base || 0).toLocaleString('vi-VN')} đ
+                    </span>
+                  )}
+                  {(employeeDebts[activeEmployee.id]?.amount || 0) > 0 && (
+                    <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                      NV nợ: -{(employeeDebts[activeEmployee.id]?.amount || 0).toLocaleString('vi-VN')} đ
+                    </span>
+                  )}
+                  {(restaurantDebts[activeEmployee.id]?.amount || 0) > 0 && (
+                    <span className="text-sky-700 font-bold bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
+                      Quán nợ NV: +{(restaurantDebts[activeEmployee.id]?.amount || 0).toLocaleString('vi-VN')} đ
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1355,7 +1464,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
               <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-rose-900">
-                    Công nợ / Tạm ứng trong tháng (VNĐ):
+                    NV nợ / Tạm ứng trong tháng (VNĐ):
                   </label>
                   <span className="text-[11px] text-rose-600 font-semibold">(Trừ vào tổng lương)</span>
                 </div>
@@ -1374,7 +1483,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 />
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-0.5">
-                    Lý do / Ghi chú công nợ:
+                    Lý do / Ghi chú NV nợ:
                   </label>
                   <input
                     type="text"
@@ -1386,6 +1495,46 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                       })
                     }
                     placeholder="VD: Ứng lương ngày 15/9, phạt rơi vỡ..."
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 font-medium focus:ring-2 focus:ring-emerald-600 focus:outline-hidden bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Quán nợ tiền nhân viên (Cộng vào tổng lương) */}
+              <div className="p-3 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-sky-900">
+                    Quán nợ tiền nhân viên (VNĐ):
+                  </label>
+                  <span className="text-[11px] text-sky-700 font-semibold">(Cộng vào tổng lương)</span>
+                </div>
+                <input
+                  type="number"
+                  step="50000"
+                  value={editingRateEmp.restaurantDebt}
+                  onChange={(e) =>
+                    setEditingRateEmp({
+                      ...editingRateEmp,
+                      restaurantDebt: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="0"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-sky-300 font-bold text-sky-800 focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white"
+                />
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-0.5">
+                    Lý do / Ghi chú quán nợ:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRateEmp.restaurantDebtNote}
+                    onChange={(e) =>
+                      setEditingRateEmp({
+                        ...editingRateEmp,
+                        restaurantDebtNote: e.target.value,
+                      })
+                    }
+                    placeholder="VD: Nợ lương tháng trước, phụ cấp thêm..."
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 font-medium focus:ring-2 focus:ring-emerald-600 focus:outline-hidden bg-white"
                   />
                 </div>
@@ -1409,10 +1558,19 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                         note: editingRateEmp.debtNote,
                       },
                     };
+                    const newRestaurantDebts = {
+                      ...restaurantDebts,
+                      [editingRateEmp.id]: {
+                        amount: editingRateEmp.restaurantDebt,
+                        note: editingRateEmp.restaurantDebtNote,
+                      },
+                    };
                     setEmployeeRates(newRates);
                     setEmployeeDebts(newDebts);
+                    setRestaurantDebts(newRestaurantDebts);
                     try {
                       localStorage.setItem(`tang2_salary_debts_${selectedYear}_${selectedMonth}`, JSON.stringify(newDebts));
+                      localStorage.setItem(`tang2_salary_restaurant_debts_${selectedYear}_${selectedMonth}`, JSON.stringify(newRestaurantDebts));
                     } catch (e) {
                       console.error(e);
                     }
@@ -1427,7 +1585,7 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                     const updatedAllTimesheets = { ...timesheets, [editingRateEmp.id]: updatedTimesheet };
                     setTimesheets(updatedAllTimesheets);
 
-                    persistToDb(updatedAllTimesheets, newRates, newDebts);
+                    persistToDb(updatedAllTimesheets, newRates, newDebts, newRestaurantDebts);
                     setEditingRateEmp(null);
                     showToast(`Đã lưu lương & công nợ cho ${editingRateEmp.name} vào Database!`);
                   }}
@@ -1596,7 +1754,8 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 <th className="border border-gray-500 py-2 px-2 text-center w-20">Tổng giờ</th>
                 <th className="border border-gray-500 py-2 px-3 text-center w-28">Tiền công giờ</th>
                 <th className="border border-gray-500 py-2 px-3 text-center w-28">Lương cứng</th>
-                <th className="border border-gray-500 py-2 px-3 text-center w-28 bg-rose-900">Công nợ / Ứng</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-24 bg-rose-900">NV nợ / Ứng</th>
+                <th className="border border-gray-500 py-2 px-3 text-center w-24 bg-sky-900">Quán nợ NV</th>
                 <th className="border border-gray-500 py-2 px-3 text-center w-32 bg-emerald-900">Thực nhận</th>
                 <th className="border border-gray-500 py-2 px-3 text-center w-24">Ký nhận</th>
               </tr>
@@ -1613,6 +1772,9 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                   <td className="border border-gray-400 py-2 px-3 text-center font-bold text-gray-900">{emp.baseSalary > 0 ? emp.baseSalary.toLocaleString('vi-VN') : '-'}</td>
                   <td className="border border-gray-400 py-2 px-3 text-center font-bold text-rose-600 bg-rose-50/50">
                     {emp.debtAmount > 0 ? `-${emp.debtAmount.toLocaleString('vi-VN')}` : '-'}
+                  </td>
+                  <td className="border border-gray-400 py-2 px-3 text-center font-bold text-sky-700 bg-sky-50/50">
+                    {emp.restaurantDebtAmount > 0 ? `+${emp.restaurantDebtAmount.toLocaleString('vi-VN')}` : '-'}
                   </td>
                   <td className="border border-gray-400 py-2 px-3 text-center font-black text-emerald-900 bg-emerald-50/60 text-sm">
                     {emp.totalSalary.toLocaleString('vi-VN')}
@@ -1637,6 +1799,9 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                 </td>
                 <td className="border border-gray-500 py-2.5 px-3 text-center font-bold text-rose-700 bg-rose-50">
                   {totalAllDebt > 0 ? `-${totalAllDebt.toLocaleString('vi-VN')}` : '-'}
+                </td>
+                <td className="border border-gray-500 py-2.5 px-3 text-center font-bold text-sky-800 bg-sky-50">
+                  {totalAllRestaurantDebt > 0 ? `+${totalAllRestaurantDebt.toLocaleString('vi-VN')}` : '-'}
                 </td>
                 <td className="border border-gray-500 py-2.5 px-3 text-center text-emerald-900 text-sm font-black bg-emerald-100/70">
                   {totalAllSalary.toLocaleString('vi-VN')} đ
@@ -1674,9 +1839,11 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
           const base = employeeRates[emp.id]?.base || 0;
           const debt = employeeDebts[emp.id]?.amount || 0;
           const debtNote = employeeDebts[emp.id]?.note || '';
+          const rDebt = restaurantDebts[emp.id]?.amount || 0;
+          const rDebtNote = restaurantDebts[emp.id]?.note || '';
           const totalH = ts.reduce((s, d) => s + (d.isOff ? 0 : d.totalHours), 0);
           const hoursPay = totalH * rate;
-          const totalSalary = hoursPay + base - debt;
+          const totalSalary = hoursPay + base - debt + rDebt;
 
           return (
             <div
@@ -1711,7 +1878,12 @@ export const SalaryManager: React.FC<SalaryManagerProps> = ({
                   )}
                   {debt > 0 && (
                     <div className="text-xs font-bold text-rose-600">
-                      Công nợ / Ứng: <b>-{debt.toLocaleString('vi-VN')} đ</b> {debtNote ? `(${debtNote})` : ''}
+                      NV nợ / Ứng: <b>-{debt.toLocaleString('vi-VN')} đ</b> {debtNote ? `(${debtNote})` : ''}
+                    </div>
+                  )}
+                  {rDebt > 0 && (
+                    <div className="text-xs font-bold text-sky-700">
+                      Quán nợ NV: <b>+{rDebt.toLocaleString('vi-VN')} đ</b> {rDebtNote ? `(${rDebtNote})` : ''}
                     </div>
                   )}
                   <div className="pt-1">

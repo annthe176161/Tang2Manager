@@ -42,6 +42,25 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.EnsureCreated();
+
+    // Ensure newly added columns exist in existing database tables
+    try
+    {
+        dbContext.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MonthlyPayrolls') AND name = 'RestaurantDebtAmount')
+            BEGIN
+                ALTER TABLE MonthlyPayrolls ADD RestaurantDebtAmount decimal(18,2) NOT NULL DEFAULT 0;
+            END;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MonthlyPayrolls') AND name = 'RestaurantDebtNote')
+            BEGIN
+                ALTER TABLE MonthlyPayrolls ADD RestaurantDebtNote nvarchar(max) NULL;
+            END;
+        ");
+    }
+    catch (Exception dbEx)
+    {
+        Console.WriteLine($"[Column Migration Warning] {dbEx.Message}");
+    }
 }
 catch (Exception ex)
 {

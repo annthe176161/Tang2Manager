@@ -142,6 +142,8 @@ export const salaryApi = {
     baseSalary: number;
     debtAmount: number;
     debtNote?: string;
+    restaurantDebtAmount?: number;
+    restaurantDebtNote?: string;
     totalHours: number;
     totalSalary: number;
     timesheetDetailsJson?: string | null;

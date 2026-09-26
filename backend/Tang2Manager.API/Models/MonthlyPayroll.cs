@@ -10,6 +10,8 @@ public class MonthlyPayroll
     public decimal BaseSalary { get; set; } = 0m;
     public decimal DebtAmount { get; set; } = 0m;
     public string? DebtNote { get; set; }
+    public decimal RestaurantDebtAmount { get; set; } = 0m;
+    public string? RestaurantDebtNote { get; set; }
     public decimal TotalHours { get; set; } = 0m;
     public decimal TotalSalary { get; set; } = 0m;
     public string? TimesheetDetailsJson { get; set; }

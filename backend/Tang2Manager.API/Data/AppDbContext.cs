@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
             entity.Property(e => e.BaseSalary).HasPrecision(18, 2);
             entity.Property(e => e.DebtAmount).HasPrecision(18, 2);
+            entity.Property(e => e.RestaurantDebtAmount).HasPrecision(18, 2);
             entity.Property(e => e.TotalHours).HasPrecision(18, 2);
             entity.Property(e => e.TotalSalary).HasPrecision(18, 2);
         });

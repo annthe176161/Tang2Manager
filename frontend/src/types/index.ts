@@ -28,11 +28,13 @@ export interface EmployeeMonthlySalary {
   role: string;
   hourlyRate: number;
   baseSalary: number;
-  debtAmount: number;
+  debtAmount: number; // Tiền nhân viên nợ / tạm ứng (trừ vào lương)
   debtNote?: string;
+  restaurantDebtAmount: number; // Tiền quán nợ nhân viên (cộng vào lương)
+  restaurantDebtNote?: string;
   totalHours: number;
   hoursPay: number; // totalHours * hourlyRate
-  totalSalary: number; // hoursPay + baseSalary - debtAmount
+  totalSalary: number; // hoursPay + baseSalary - debtAmount + restaurantDebtAmount
 }
 
 export interface MonthlyPayrollRecord {
@@ -45,6 +47,8 @@ export interface MonthlyPayrollRecord {
   baseSalary: number;
   debtAmount: number;
   debtNote?: string;
+  restaurantDebtAmount: number;
+  restaurantDebtNote?: string;
   totalHours: number;
   totalSalary: number;
   timesheetDetailsJson?: string | null;

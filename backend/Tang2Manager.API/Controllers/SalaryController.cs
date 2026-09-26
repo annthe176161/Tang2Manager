@@ -16,6 +16,8 @@ public class PayrollRecordDto
     public decimal BaseSalary { get; set; }
     public decimal DebtAmount { get; set; }
     public string? DebtNote { get; set; }
+    public decimal RestaurantDebtAmount { get; set; }
+    public string? RestaurantDebtNote { get; set; }
     public decimal TotalHours { get; set; }
     public decimal TotalSalary { get; set; }
     public string? TimesheetDetailsJson { get; set; }
@@ -30,6 +32,8 @@ public class SavePayrollRequestDto
     public decimal BaseSalary { get; set; }
     public decimal DebtAmount { get; set; }
     public string? DebtNote { get; set; }
+    public decimal RestaurantDebtAmount { get; set; }
+    public string? RestaurantDebtNote { get; set; }
     public decimal TotalHours { get; set; }
     public decimal TotalSalary { get; set; }
     public string? TimesheetDetailsJson { get; set; }
@@ -88,6 +92,8 @@ public class SalaryController : ControllerBase
                     BaseSalary = rec.BaseSalary,
                     DebtAmount = rec.DebtAmount,
                     DebtNote = rec.DebtNote,
+                    RestaurantDebtAmount = rec.RestaurantDebtAmount,
+                    RestaurantDebtNote = rec.RestaurantDebtNote,
                     TotalHours = rec.TotalHours,
                     TotalSalary = rec.TotalSalary,
                     TimesheetDetailsJson = rec.TimesheetDetailsJson
@@ -106,6 +112,8 @@ public class SalaryController : ControllerBase
                     BaseSalary = emp.BaseSalary,
                     DebtAmount = 0m,
                     DebtNote = string.Empty,
+                    RestaurantDebtAmount = 0m,
+                    RestaurantDebtNote = string.Empty,
                     TotalHours = 0m,
                     TotalSalary = emp.BaseSalary,
                     TimesheetDetailsJson = null
@@ -135,6 +143,8 @@ public class SalaryController : ControllerBase
                 record.BaseSalary = req.BaseSalary;
                 record.DebtAmount = req.DebtAmount;
                 record.DebtNote = req.DebtNote;
+                record.RestaurantDebtAmount = req.RestaurantDebtAmount;
+                record.RestaurantDebtNote = req.RestaurantDebtNote;
                 record.TotalHours = req.TotalHours;
                 record.TotalSalary = req.TotalSalary;
                 record.TimesheetDetailsJson = req.TimesheetDetailsJson;
@@ -151,6 +161,8 @@ public class SalaryController : ControllerBase
                     BaseSalary = req.BaseSalary,
                     DebtAmount = req.DebtAmount,
                     DebtNote = req.DebtNote,
+                    RestaurantDebtAmount = req.RestaurantDebtAmount,
+                    RestaurantDebtNote = req.RestaurantDebtNote,
                     TotalHours = req.TotalHours,
                     TotalSalary = req.TotalSalary,
                     TimesheetDetailsJson = req.TimesheetDetailsJson,
@@ -184,7 +196,7 @@ public class SalaryController : ControllerBase
         foreach (var rec in records)
         {
             rec.TotalHours = 0m;
-            rec.TotalSalary = rec.BaseSalary - rec.DebtAmount;
+            rec.TotalSalary = rec.BaseSalary - rec.DebtAmount + rec.RestaurantDebtAmount;
             rec.TimesheetDetailsJson = null;
             rec.UpdatedAt = DateTime.UtcNow;
         }
