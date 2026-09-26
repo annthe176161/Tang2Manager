@@ -828,7 +828,7 @@ export const InvoiceManager: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200 shadow-2xs cursor-pointer whitespace-nowrap"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>← Bảng Tổng</span>
+                  <span>Bảng Tổng</span>
                 </button>
                 <div className="flex items-center gap-1.5 text-xs bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 text-blue-900 font-bold whitespace-nowrap">
                   <span className="text-blue-700 font-medium">Tổng hóa đơn:</span>
